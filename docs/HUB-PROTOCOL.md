@@ -16,7 +16,7 @@ Entity `tile` is a sprite name in the DCSS `player` sheet (e.g. `BASE_HUMAN`); m
 |---|---|---|---|---|
 | `hello` | B->N | `v`, `token?` | socket open; token resumes a session | done |
 | `welcome` | N->B | `v`, `tick`, `tickHz`, `selfId` | reply to hello | done |
-| `register` | B->N | `username`, `password` | sign up; 3-20 `[A-Za-z0-9_]`, pw 8-200 | done |
+| `register` | B->N | `username`, `password` | sign up; 3-20 `[A-Za-z0-9]` (= webtiles nick_regex), pw 8-200 | done |
 | `login` | B->N | `username`, `password` | sign in; 5 failures per 10 min then `rate_limited` | done |
 | `auth_ok` | N->B | `accountId`, `username`, `token` | success; token lives 30 days | done |
 | `auth_err` | N->B | `reason` | failure, rate-limited, session expired | done |
@@ -26,8 +26,9 @@ Entity `tile` is a sprite name in the DCSS `player` sheet (e.g. `BASE_HUMAN`); m
 | `chat` | B->N | `channel` local/global, `text` | send; 1-300 chars, 5 per 5 s; `/block name`, `/unblock name` | done |
 | `chat` | N->B | `channel`, `from`, `text`, `tick` | fan-out; local = Chebyshev <= 8; blocked senders dropped | done |
 | `profile_req` / `profile` | B<->N | `accountId` / `Profile` {username, createdAt, lastSeenAt, online, lastCharacter?, dungeon? {char, xl, place, watchUrl?}} | avatar click | done |
-| `play` | B->N | `gameId` | door interaction; Node mints webtiles token | planned (Phase 1) |
-| `play_ok` | N->B | `webtilesUrl`, `token` | embed webtiles client | planned |
+| `play` | B->N | `gameId` | Enter on the dungeon stairs; refused unless the entity stands on a `dungeon` door | done |
+| `watch` | B->N | `username` | profile "Watch their game" | done |
+| `crawl_open` | N->B | `mode` play/watch, `url` (`/crawl/#play-<gameId>` or `/crawl/#watch-<user>`), `token` | client stores the token as the `login` cookie and loads the URL in the embedded panel | done |
 | `stash_list` / `stash` | B<->N | items with blob metadata (never the blob itself) | town kiosk UI | planned (Phase 2a) |
 | `offer_create` / `offer_accept` / `offer_cancel` / `offer_update` | B<->N | `offerId`, `itemId`, `toAccountId`, state | trade escrow | planned (Phase 2a) |
 | `rumors` | N->B | relic name, props summary, branch, age | tavern board | planned (Phase 2b) |
@@ -37,6 +38,8 @@ Entity `tile` is a sprite name in the DCSS `player` sheet (e.g. `BASE_HUMAN`); m
 | `error` | N->B | `reason` | any; `replaced`, `town full`, `protocol version mismatch` | done |
 
 ## 2. Node <-> Py (local HTTP + WebSocket bridge, loopback only)
+
+Node also reverse-proxies webtiles under its own origin (`server/bridge/proxy.ts`): `/crawl/` -> webtiles `/`, and `/static/`, `/gamedata/`, `/socket` forwarded unchanged (the websocket is tunneled byte for byte). This is what lets the embedded webtiles client receive the hub-minted token as a same-origin cookie.
 
 | Endpoint / message | Dir | Fields | Purpose | Status |
 |---|---|---|---|---|
