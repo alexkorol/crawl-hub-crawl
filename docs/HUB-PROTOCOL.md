@@ -12,25 +12,27 @@ Types live in `crawl-hub/shared/protocol.ts`. `PROTOCOL_VERSION` is sent in `hel
 
 | Message | Dir | Fields | When | Status |
 |---|---|---|---|---|
-| `hello` | B->N | `v`, `token?` | socket open | stub |
-| `welcome` | N->B | `v`, `tick`, `tickHz`, `selfId` | reply to hello | stub |
-| `register` | B->N | `username`, `password` | sign up | planned (Phase 1) |
-| `login` | B->N | `username`, `password` | sign in | planned (Phase 1) |
-| `auth_ok` | N->B | `accountId`, `username`, `token` | success | planned |
-| `auth_err` | N->B | `reason` | failure, rate-limited | planned |
-| `snapshot` | N->B | `tick`, `mapId`, `entities[]` | after join or resync | stub |
-| `delta` | N->B | `tick`, `upsert[]`, `remove[]`, `ackSeq?` | each tick with changes | stub |
-| `move` | B->N | `dir`, `seq` | key press; applied next tick | stub |
-| `chat` | B->N | `channel` local/global, `text` | send | planned (Phase 1) |
-| `chat` | N->B | `channel`, `from`, `text`, `tick` | fan-out; local = within 8 tiles | planned |
+| `hello` | B->N | `v`, `token?` | socket open; token resumes a session | done |
+| `welcome` | N->B | `v`, `tick`, `tickHz`, `selfId` | reply to hello | done |
+| `register` | B->N | `username`, `password` | sign up; 3-20 `[A-Za-z0-9_]`, pw 8-200 | done |
+| `login` | B->N | `username`, `password` | sign in; 5 failures per 10 min then `rate_limited` | done |
+| `auth_ok` | N->B | `accountId`, `username`, `token` | success; token lives 30 days | done |
+| `auth_err` | N->B | `reason` | failure, rate-limited, session expired | done |
+| `snapshot` | N->B | `tick`, `mapId`, `entities[]`, `selfId` | after join; one entity per account, later socket replaces earlier (`error "replaced"`) | done |
+| `delta` | N->B | `tick`, `upsert[]`, `remove[]`, `ackSeq?` | each tick with changes, joined clients only | done |
+| `move` | B->N | `dir`, `seq` | key press; applied next tick | done |
+| `chat` | B->N | `channel` local/global, `text` | send; 1-300 chars, 5 per 5 s; `/block name`, `/unblock name` | done |
+| `chat` | N->B | `channel`, `from`, `text`, `tick` | fan-out; local = Chebyshev <= 8; blocked senders dropped | done |
 | `profile_req` / `profile` | B<->N | `accountId` / character, XL, place, milestones, watchUrl | avatar click | planned |
 | `play` | B->N | `gameId` | door interaction; Node mints webtiles token | planned (Phase 1) |
 | `play_ok` | N->B | `webtilesUrl`, `token` | embed webtiles client | planned |
 | `stash_list` / `stash` | B<->N | items with blob metadata (never the blob itself) | town kiosk UI | planned (Phase 2a) |
 | `offer_create` / `offer_accept` / `offer_cancel` / `offer_update` | B<->N | `offerId`, `itemId`, `toAccountId`, state | trade escrow | planned (Phase 2a) |
 | `rumors` | N->B | relic name, props summary, branch, age | tavern board | planned (Phase 2b) |
-| `ping` / `pong` | B<->N | `now` / `now`, `serverNow` | RTT | stub |
-| `error` | N->B | `reason` | any | stub |
+| `ping` / `pong` | B<->N | `now` / `now`, `serverNow` | RTT | done |
+| `block` | B->N | `username`, `on` | same as `/block` command | done |
+| `system` | N->B | `text` | server notices (rate limit, command results) | done |
+| `error` | N->B | `reason` | any; `replaced`, `town full`, `protocol version mismatch` | done |
 
 ## 2. Node <-> Py (local HTTP + WebSocket bridge, loopback only)
 
