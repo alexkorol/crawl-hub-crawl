@@ -43,6 +43,8 @@ Fork-only code lives in `crawl-ref/source/hub/` (C++) and
 
 ## Gotchas
 - `./crawl -test` needs a debug build and `builddb` (`make test` does both).
+- `make catch2-tests` recompiles every object with coverage flags and deletes `./crawl`; run
+  `make -j8 debug WEBTILES=y` again afterwards (about 1 minute with ccache). Do not run the two concurrently.
 - `-headless -no-save -seed N` gives deterministic reproductions.
 - macOS has no `timeout` command; use `gtimeout` (coreutils) or run long jobs in the background.
 - Local webtiles creates `webserver/passwd.db3`, `rcs/`, `saves/` on first run; they are untracked scratch state.
