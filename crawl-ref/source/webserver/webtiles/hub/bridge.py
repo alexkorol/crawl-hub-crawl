@@ -67,6 +67,32 @@ class HubGamesHandler(HubHandlerMixin, status.LobbyHandler):
     """GET -> the public lobby JSON (same shape as /status/lobby/)."""
 
 
+class HubControlHandler(HubHandlerMixin, tornado.web.RequestHandler):
+    """POST {"username": ..., "control": {...}} -> {"delivered": bool}
+
+    Pushes an unsolicited control message (e.g. ``hub_spawn``) to the
+    running game of ``username``. Used for bughouse and other live effects.
+    """
+
+    def post(self):
+        try:
+            body = json_decode(self.request.body or b"{}")
+            username = str(body["username"]).strip().lower()
+            control = body["control"]
+            assert isinstance(control, dict) and "msg" in control
+        except (ValueError, KeyError, TypeError, AssertionError):
+            raise tornado.web.HTTPError(400, "expected JSON with username and control")
+        from webtiles.process_handler import processes
+        delivered = False
+        for process in list(processes.values()):
+            if (process.username or "").lower() == username and process.conn:
+                process.conn.send_message(json_encode(control))
+                delivered = True
+                break
+        self.set_header("Content-Type", "application/json")
+        self.write(json_encode({"delivered": delivered}))
+
+
 REPLY_EXPECTED = {
     "hub_kiosk_open": "hub_stash_list",
     "hub_stash_deposit": "hub_stash_deposit_fail",

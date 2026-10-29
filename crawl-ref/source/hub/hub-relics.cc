@@ -21,7 +21,11 @@
 #include "json-wrapper.h"
 #include "kill-method-type.h"
 #include "libutil.h"
+#include "mgen-data.h"
+#include "mon-death.h"
 #include "mon-place.h"
+#include "mon-util.h"
+#include "monster.h"
 #include "place.h"
 #include "player.h"
 #include "state.h"
@@ -103,6 +107,8 @@ static void _common_fields(JsonNode *obj, const char *msg)
     json_append_member(obj, "branch",
                        json_mkstring(branches[you.where_are_you].abbrevname));
     json_append_member(obj, "depth", json_mknumber(you.depth));
+    json_append_member(obj, "seed", json_mkstring(to_string(crawl_state.seed)));
+    json_append_member(obj, "turns", json_mknumber(you.num_turns));
 }
 #endif
 
@@ -127,12 +133,23 @@ void hub_report_death(const scorefile_entry &se)
     if (!tiles.has_receivers())
         return;
     const int dt = se.get_death_type();
+    const string cause = se.death_description(scorefile_entry::DDV_ONELINE);
+    {
+        // Races and bughouse need every ending, not only deaths.
+        JsonWrapper over(json_mkobject());
+        _common_fields(over.node, "hub_game_over");
+        json_append_member(over.node, "cause", json_mkstring(cause));
+        json_append_member(over.node, "won", json_mkbool(dt == KILLED_BY_WINNING));
+        json_append_member(over.node, "quit",
+                           json_mkbool(dt == KILLED_BY_LEAVING
+                                       || dt == KILLED_BY_QUITTING));
+        _send(over);
+    }
     if (dt == KILLED_BY_LEAVING || dt == KILLED_BY_WINNING
         || dt == KILLED_BY_QUITTING)
     {
         return;
     }
-    const string cause = se.death_description(scorefile_entry::DDV_ONELINE);
 
     auto report = [&](const item_def &item, const char *where)
     {
@@ -220,5 +237,54 @@ void hub_place_lost_relic()
     _common_fields(ok.node, "hub_relic_placed");
     json_append_member(ok.node, "relicId", json_mknumber(relic_id));
     _send(ok);
+#endif
+}
+
+void hub_monster_killed(const monster &mons)
+{
+#ifdef USE_TILE_WEB
+    if (!tiles.has_receivers() || mons.is_summoned() || mons.friendly())
+        return;
+    JsonWrapper j(json_mkobject());
+    _common_fields(j.node, "hub_monster_killed");
+    json_append_member(j.node, "monster",
+                       json_mkstring(mons_type_name(mons.type, DESC_PLAIN)));
+    json_append_member(j.node, "hd", json_mknumber(mons.get_experience_level()));
+    _send(j);
+#else
+    UNUSED(mons);
+#endif
+}
+
+bool hub_handle_control(const string &msgtype, const string &json)
+{
+#ifdef USE_TILE_WEB
+    if (msgtype != "hub_spawn")
+        return false;
+    if (!crawl_state.waiting_for_command || crawl_state.game_is_arena())
+        return true; // mid-action: drop rather than corrupt state
+    JsonWrapper obj(json_decode(json.c_str()));
+    if (!obj.node || obj.node->tag != JSON_OBJECT)
+        return true;
+    const JsonNode *name = json_find_member(obj.node, "monster");
+    const JsonNode *from = json_find_member(obj.node, "from");
+    if (!name || name->tag != JSON_STRING)
+        return true;
+    const monster_type type = get_monster_by_name(name->string_, false);
+    if (type == MONS_PROGRAM_BUG || type == MONS_NO_MONSTER)
+        return true;
+    mgen_data mg(type, BEH_HOSTILE, coord_def(-1, -1), MHITYOU,
+                 MG_FORBID_BANDS);
+    mg.proximity = PROX_CLOSE_TO_PLAYER;
+    if (create_monster(mg, false))
+    {
+        mprf(MSGCH_WARN, "A %s sent by %s bursts through a rift!",
+             name->string_,
+             from && from->tag == JSON_STRING ? from->string_ : "your rival");
+    }
+    return true;
+#else
+    UNUSED(msgtype, json);
+    return false;
 #endif
 }

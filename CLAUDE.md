@@ -55,6 +55,7 @@ Fork-only code lives in `crawl-ref/source/hub/` (C++) and
 - `tiles.hub_wait_reply(ms)` (tileweb.cc, HUB only) blocks for a `hub_*` control message; the kiosk uses it for every request.
 - `JsonWrapper` deletes its node in every destructor: never return or copy one by value; pass by reference or hand over a raw `JsonNode*`.
 - `hub/hub-relics.{h,cc}`: `hub_json_item` (shared item JSON), `hub_item_event` (call-outs in items.cc, player-equip.cc), `hub_report_death` (ouch.cc), `hub_place_lost_relic` (dungeon.cc). Never consume game RNG in hub code: `hub_free_floor_cell` picks deterministically.
+- `hub_handle_control` (hub-relics.cc) runs unsolicited `hub_*` pushes (e.g. `hub_spawn`) from inside the webtiles control-message dispatch; only act when `crawl_state.waiting_for_command`.
 - Gate hub socket features on `tiles.has_receivers()`, not `is_controlled_from_web()` (false on some resumed games).
 
 ## Gotchas

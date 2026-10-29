@@ -288,6 +288,7 @@ def bind_server(nonsecure_sockets, secure_sockets):
         handlers += [
             (r"/hub/token", bridge.HubTokenHandler),
             (r"/hub/games", bridge.HubGamesHandler),
+            (r"/hub/control", bridge.HubControlHandler),
         ]
 
     application = tornado.web.Application(handlers,

@@ -35,6 +35,9 @@
 #include "god-conduct.h"
 #include "god-passive.h" // passive_t::bless_followers, convert_orcs
 #include "hints.h"
+#ifdef HUB
+#include "hub-relics.h"
+#endif
 #include "hiscores.h"
 #include "item-name.h"
 #include "item-prop.h"
@@ -2510,6 +2513,13 @@ static void _player_on_kill_effects(monster& mons, killer_type killer,
 item_def* monster_die(monster& mons, killer_type killer,
                       int killer_index, bool silent, bool mount_death)
 {
+#ifdef HUB
+    if (YOU_KILL(killer) && !mount_death
+        && !testbits(mons.flags, MF_PENDING_REVIVAL))
+    {
+        hub_monster_killed(mons); // crawl-hub bughouse
+    }
+#endif
     ASSERT(!invalid_monster(&mons));
 
     // trying to die again after scheduling an avoided_death fineff

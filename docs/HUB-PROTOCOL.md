@@ -32,6 +32,8 @@ Entity `tile` is a sprite name in the DCSS `player` sheet (e.g. `BASE_HUMAN`); m
 | `stash_list` / `stash` | B<->N | - / `items[]` {id, name, quantity, isRandart, depositedAt, depositedPlace} (never the blob) | town stash view | done |
 | `offer_create` {stashItemId, toUsername, note?} / `offer_accept` / `offer_decline` / `offer_cancel` {offerId} / `offers_list` | B->N | | gifts of stash items; an offered item is held in escrow (not listable, not withdrawable) until resolved; no binding or fees | done |
 | `offers` | N->B | `incoming[]`, `outgoing[]` (OfferView) | pushed to both parties on every change and on request; `system` notices accompany it | done |
+| `races_list` / `races` / `race_join` {raceId} | B<->N | - / `races[]` {id, name, seed, endsAt, joined, board[]} | seeded races; chat `/race new <seed> <hours> <name>`, `/race join <id>`; progress from game messages, pushed on change | done |
+| chat channel `clan`, `/clan create|join|leave`, `/bughouse challenge <name>|accept|end` | B->N | | clan rooms (one clan per account, profile shows it) and bughouse matches (one per account, kills rate-limited to one per 8 s) | done |
 | `rumors_list` / `rumors` | B<->N | - / `items[]` {name, powers, branch, depth, lostAt, lostChar, cause, respawnCount} | tavern board (`r`, or Enter on the tavern door); losses are also announced as `system` notices | done |
 | `ping` / `pong` | B<->N | `now` / `now`, `serverNow` | RTT | done |
 | `block` | B->N | `username`, `on` | same as `/block` command | done |
@@ -47,6 +49,7 @@ Node also reverse-proxies webtiles under its own origin (`server/bridge/proxy.ts
 | `POST /hub/token` | N->Py | `{username}` -> `{username, token}` | mint a webtiles login cookie for the ws `token_login` message; creates the webtiles account on first use with a random password | done |
 | `GET /hub/games` | N->Py | -> same JSON as `/status/lobby/` (name, game_id, char, xl, place, watch_url, ...) | Node polls every 2 s; entities gain `dungeon {char, xl, place}` and accounts record their last character | done |
 | `POST /bridge/game` | Py->N | `{username, event}` -> `{reply}` | every `*hub_*` game message is relayed by `webtiles/hub/bridge.py` `_relay`; Node answers with the control message to send back, or null | done |
+| `POST /hub/control` | N->Py | `{username, control}` -> `{delivered}` | unsolicited push into a running game (bughouse `hub_spawn`) | done |
 | (reply) | N->Py->Game | the `reply` object is sent to the game as a control message; on a failed POST the Python side synthesizes `*_fail {reason: "the hub is unreachable"}` for requests that expect an answer | done |
 
 Auth between Node and Py: header `X-Hub-Secret` must equal webtiles `hub_bridge_secret` (Node env `WEBTILES_SECRET`); handlers refuse non-loopback clients and are not registered unless `hub_enabled = True`. Code: `webtiles/hub/bridge.py`, `crawl-hub/server/bridge/`.
@@ -65,7 +68,9 @@ New server-only messages emitted by the game (all behind `HUB=y`):
 | `*hub_relic_query` | `branch`, `depth`, `tagMajor`, `tagMinor` | end of level generation (`hub_place_lost_relic`); game waits <= 400 ms for `hub_relic_answer` | done |
 | `*hub_relic_placed` / `*hub_relic_place_failed` | `relicId` / + `reason` | relic put on a free floor cell (RNG-free choice) or not; a failure returns it to the lost pool | done |
 | `*hub_item_event` | `kind` pickup/equip/unequip/drop + item fields + `place` | randarts only; feeds `item_events` and moves relics placed -> carried | done |
-| `*hub_event` | free-form `{kind, ...}` | Phase 3 (race milestones, bughouse kills) | planned (3) |
+| `*hub_game_over` | `cause`, `won`, `quit` + common fields | every game ending (`hub_report_death`); closes race entries and bughouse matches | done |
+| `*hub_monster_killed` | `monster` (type name), `hd` + common fields | player kills (not summons/allies); bughouse routes it to the rival | done |
+| (common fields) | `charName`, `xl`, `place`, `branch`, `depth`, `seed`, `turns` | on every hub message from `hub-relics.cc` `_common_fields`; races track progress from them | done |
 
 Control messages Py sends to the game (handled in `tileweb.cc` `_handle_control_message`):
 
@@ -76,7 +81,7 @@ Control messages Py sends to the game (handled in `tileweb.cc` `_handle_control_
 | `hub_stash_deposit_ok` / `hub_stash_deposit_fail` | `stashItemId` / `reason` | the game removes the item only after `_ok` | done |
 | `hub_stash_fail` | `reason` | generic failure (e.g. no hub account for this webtiles user) | done |
 | `hub_relic_answer` | `relicId` or null, `blob`, `tagMajor`, `tagMinor` | 15% per eligible level (same branch, depth within 2), one copy at a time: the relic leaves the lost pool when answered | done |
-| `hub_spawn` | monster spec | bughouse (Phase 3) | planned (3) |
+| `hub_spawn` | `monster` (type name), `from` | pushed by Node via Py `POST /hub/control`; the game spawns it hostile near the player when waiting for a command (`hub_handle_control`), else drops it | done |
 
 ## 4. Reports
 

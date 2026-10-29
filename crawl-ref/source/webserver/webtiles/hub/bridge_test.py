@@ -115,6 +115,7 @@ class HandleGameMessageTest(HubBridgeTest):
         return tornado.web.Application([
             (r"/hub/token", bridge.HubTokenHandler),
             (r"/hub/games", bridge.HubGamesHandler),
+            (r"/hub/control", bridge.HubControlHandler),
             (r"/bridge/game", FakeNodeHandler),
         ])
 
@@ -149,3 +150,24 @@ class HandleGameMessageTest(HubBridgeTest):
         self.assertEqual(p.sent, [{"msg": "hub_stash_withdraw_fail",
                                    "reason": "the hub is unreachable",
                                    "stashItemId": 5}])
+
+    def test_control_push_reaches_the_running_game(self):
+        from webtiles import process_handler
+        p = FakeProcess()
+        process_handler.processes["/tmp/fake.sock"] = p
+        try:
+            r = self.fetch("/hub/control", method="POST",
+                           body=json.dumps({"username": "Alice",
+                                            "control": {"msg": "hub_spawn",
+                                                        "monster": "rat"}}),
+                           headers={"X-Hub-Secret": "s3cret"})
+            self.assertEqual(r.code, 200)
+            self.assertEqual(json.loads(r.body), {"delivered": True})
+            self.assertEqual(p.sent, [{"msg": "hub_spawn", "monster": "rat"}])
+            r = self.fetch("/hub/control", method="POST",
+                           body=json.dumps({"username": "nobody",
+                                            "control": {"msg": "hub_spawn"}}),
+                           headers={"X-Hub-Secret": "s3cret"})
+            self.assertEqual(json.loads(r.body), {"delivered": False})
+        finally:
+            del process_handler.processes["/tmp/fake.sock"]

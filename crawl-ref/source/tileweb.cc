@@ -2,6 +2,10 @@
 
 #include <chrono>
 
+#ifdef HUB
+#include "hub-relics.h"
+#endif
+
 #ifdef USE_TILE_WEB
 
 #include "tileweb.h"
@@ -625,8 +629,10 @@ wint_t TilesFramework::_handle_control_message(sockaddr_un addr, string data)
 #ifdef HUB
     else if (msgtype.compare(0, 4, "hub_") == 0)
     {
-        // crawl-hub reply to a request made through hub_wait_reply().
-        m_hub_reply = data;
+        // Unsolicited hub pushes are handled at once; anything else is the
+        // reply to a request made through hub_wait_reply().
+        if (!hub_handle_control(msgtype, data))
+            m_hub_reply = data;
     }
 #endif
     else if (msgtype == "text_input")

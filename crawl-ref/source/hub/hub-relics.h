@@ -32,3 +32,11 @@ void hub_place_lost_relic();
 
 /// Deterministic (RNG-free) choice of a free floor cell; false when none.
 bool hub_free_floor_cell(coord_def &out, bool avoid_vaults);
+
+class monster;
+/// Bughouse: the player killed a monster; tell the hub (fire-and-forget).
+void hub_monster_killed(const monster &mons);
+
+/// Unsolicited control messages from the hub (e.g. `hub_spawn`). Returns
+/// true when handled. Called from the webtiles control-message dispatch.
+bool hub_handle_control(const std::string &msgtype, const std::string &json);
