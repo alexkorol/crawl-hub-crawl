@@ -38,6 +38,9 @@
 #include "god-abil.h"
 #include "god-passive.h"
 #include "hints.h"
+#ifdef HUB
+#include "hub-relics.h"
+#endif
 #include "hiscores.h"
 #include "invent.h"
 #include "item-prop.h"
@@ -1611,6 +1614,9 @@ void ouch(int dam, kill_method_type death_type, mid_t source, const char *aux,
     // Prevent bogus notes.
     activate_notes(false);
     _print_endgame_messages(se);
+#ifdef HUB
+    hub_report_death(se); // crawl-hub: randarts become lost relics
+#endif
     end_game(se);
 }
 

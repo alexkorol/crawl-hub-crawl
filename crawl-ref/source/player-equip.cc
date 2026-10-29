@@ -16,6 +16,9 @@
 #include "god-conduct.h"
 #include "god-item.h"
 #include "god-passive.h"
+#ifdef HUB
+#include "hub-relics.h"
+#endif
 #include "hints.h"
 #include "invent.h"
 #include "item-name.h"
@@ -1538,6 +1541,9 @@ void equip_item(equipment_slot slot, int item_slot, bool msg, bool skip_effects)
     item_def& item = you.inv[item_slot];
 
     const unsigned int old_talents = your_talents().size();
+#ifdef HUB
+    hub_item_event("equip", item); // crawl-hub: randart tracking
+#endif
 
 #ifdef USE_SOUND
     if (is_weapon(item))
@@ -1594,6 +1600,9 @@ bool unequip_item(item_def& item, bool msg, bool skip_effects)
         say_farewell_to_weapon(item);
 
     const int item_slot = item.link;
+#ifdef HUB
+    hub_item_event("unequip", item); // crawl-hub: randart tracking
+#endif
     you.equipment.remove(item);
     you.equipment.update();
 

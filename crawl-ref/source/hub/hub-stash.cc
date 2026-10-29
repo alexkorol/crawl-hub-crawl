@@ -7,6 +7,7 @@
 #include "AppHdr.h"
 
 #include "hub-stash.h"
+#include "hub-relics.h"
 
 #include "artefact.h"
 #include "art-enum.h"
@@ -16,7 +17,6 @@
 #include "dungeon.h"
 #include "env.h"
 #include "mon-place.h"
-#include "random.h"
 #include "terrain.h"
 #include "invent.h"
 #include "item-name.h"
@@ -213,29 +213,7 @@ static bool _deposit_one(const item_def &item)
 {
     JsonWrapper j(json_mkobject());
     _new_request(j, "hub_stash_deposit");
-    json_append_member(j.node, "blob",
-                       json_mkstring(hub_base64_encode(hub_item_to_blob(item))));
-    json_append_member(j.node, "name", json_mkstring(item.name(DESC_PLAIN)));
-    json_append_member(j.node, "basetype", json_mknumber(item.base_type));
-    json_append_member(j.node, "subtype", json_mknumber(item.sub_type));
-    json_append_member(j.node, "quantity", json_mknumber(item.quantity));
-    json_append_member(j.node, "isRandart",
-                       json_mkbool(is_random_artefact(item)));
-    json_append_member(j.node, "isUnrand",
-                       json_mkbool(is_unrandom_artefact(item)));
-    if (is_random_artefact(item))
-    {
-        JsonNode *props = json_mkobject();
-        artefact_properties_t proprt;
-        artefact_properties(item, proprt);
-        for (int i = 0; i < ART_PROPERTIES; ++i)
-            if (proprt[i])
-            {
-                json_append_member(props, to_string(i).c_str(),
-                                   json_mknumber(proprt[i]));
-            }
-        json_append_member(j.node, "props", props);
-    }
+    hub_json_item(j.node, item);
     JsonWrapper reply(_hub_request(j));
     if (!reply.node)
     {
@@ -457,21 +435,7 @@ void hub_place_fixed_kiosk()
         if (env.grid(*ri) == DNGN_HUB_KIOSK)
             return; // already there (level regenerated with one)
 
-    // Prefer plain floor away from vault-marked cells; fall back to any floor.
-    for (int pass = 0; pass < 2; ++pass)
-    {
-        for (int tries = 0; tries < 2000; ++tries)
-        {
-            const coord_def p = random_in_bounds();
-            if (env.grid(p) != DNGN_FLOOR || monster_at(p)
-                || env.igrid(p) != NON_ITEM)
-            {
-                continue;
-            }
-            if (pass == 0 && map_masked(p, MMT_VAULT))
-                continue;
-            env.grid(p) = DNGN_HUB_KIOSK;
-            return;
-        }
-    }
+    coord_def p;
+    if (hub_free_floor_cell(p, true) || hub_free_floor_cell(p, false))
+        env.grid(p) = DNGN_HUB_KIOSK;
 }

@@ -40,6 +40,9 @@
 #include "english.h"
 #include "env.h"
 #include "god-passive.h"
+#ifdef HUB
+#include "hub-relics.h"
+#endif
 #include "god-prayer.h"
 #include "hints.h"
 #include "hiscores.h"
@@ -1837,6 +1840,9 @@ bool move_item_to_inv(int obj, int quant_got, bool quiet)
         dec_mitm_item_quantity(obj, quant_got);
 
         you.turn_is_over = true;
+#ifdef HUB
+        hub_item_event("pickup", it); // crawl-hub: randart tracking
+#endif
     }
 
     return keep_going;
@@ -2883,6 +2889,9 @@ bool drop_item(int item_dropped, int quant_drop)
     }
 
     mprf("You drop %s.", quant_name(item, quant_drop, DESC_A).c_str());
+#ifdef HUB
+    hub_item_event("drop", item); // crawl-hub: randart tracking
+#endif
 
     // If you drop an item in as a merfolk, it is below the water line and
     // makes no noise falling.

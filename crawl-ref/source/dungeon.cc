@@ -7,6 +7,7 @@
 
 #include "dungeon.h"
 #ifdef HUB
+#include "hub-relics.h"
 #include "hub-stash.h"
 #endif
 
@@ -2803,6 +2804,7 @@ static void _build_dungeon_level()
     link_items();
 #ifdef HUB
     hub_place_fixed_kiosk(); // crawl-hub: Temple, Vaults:1, Vestibule
+    hub_place_lost_relic();  // crawl-hub: a lost randart may return here
 #endif
 
     if (!player_in_branch(BRANCH_COCYTUS)

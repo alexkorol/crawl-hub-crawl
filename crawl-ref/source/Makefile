@@ -733,7 +733,7 @@ endif
 ifdef HUB
 DEFINES_L += -DHUB
 INCLUDES_L += -Ihub
-HUB_OBJECTS = hub/hub-stash.o
+HUB_OBJECTS = hub/hub-stash.o hub/hub-relics.o
 OBJECTS += $(HUB_OBJECTS)
 TEST_OBJECTS += catch2-tests/test_hub_stash.o
 endif
