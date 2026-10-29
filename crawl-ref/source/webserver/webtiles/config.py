@@ -98,6 +98,9 @@ defaults = {
     'use_game_yaml': None, # default: load games.d if games is empty
     'banned': [],
     'bot_accounts': False,
+    # crawl-hub bridge (webtiles/hub/): loopback HTTP endpoints for the Node hub
+    'hub_enabled': False,
+    'hub_bridge_secret': None,
     'wizard_accounts': False,
     'allow_anon_spectate': True,
     'enable_ttyrecs': True,

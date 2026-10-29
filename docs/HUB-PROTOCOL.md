@@ -21,11 +21,11 @@ Entity `tile` is a sprite name in the DCSS `player` sheet (e.g. `BASE_HUMAN`); m
 | `auth_ok` | N->B | `accountId`, `username`, `token` | success; token lives 30 days | done |
 | `auth_err` | N->B | `reason` | failure, rate-limited, session expired | done |
 | `snapshot` | N->B | `tick`, `map` (MapData: id, legend, rows), `entities[]`, `selfId` | after join; one entity per account, later socket replaces earlier (`error "replaced"`) | done |
-| `delta` | N->B | `tick`, `upsert[]`, `remove[]`, `ackSeq?` | each tick with changes, joined clients only | done |
+| `delta` | N->B | `tick`, `upsert[]`, `remove[]`, `ackSeq?` | each tick with changes, joined clients only; entities carry `dungeon?` while a classic game runs | done |
 | `move` | B->N | `dir`, `seq` | key press; applied next tick | done |
 | `chat` | B->N | `channel` local/global, `text` | send; 1-300 chars, 5 per 5 s; `/block name`, `/unblock name` | done |
 | `chat` | N->B | `channel`, `from`, `text`, `tick` | fan-out; local = Chebyshev <= 8; blocked senders dropped | done |
-| `profile_req` / `profile` | B<->N | `accountId` / character, XL, place, milestones, watchUrl | avatar click | planned |
+| `profile_req` / `profile` | B<->N | `accountId` / `Profile` {username, createdAt, lastSeenAt, online, lastCharacter?, dungeon? {char, xl, place, watchUrl?}} | avatar click | done |
 | `play` | B->N | `gameId` | door interaction; Node mints webtiles token | planned (Phase 1) |
 | `play_ok` | N->B | `webtilesUrl`, `token` | embed webtiles client | planned |
 | `stash_list` / `stash` | B<->N | items with blob metadata (never the blob itself) | town kiosk UI | planned (Phase 2a) |
@@ -40,12 +40,12 @@ Entity `tile` is a sprite name in the DCSS `player` sheet (e.g. `BASE_HUMAN`); m
 
 | Endpoint / message | Dir | Fields | Purpose | Status |
 |---|---|---|---|---|
-| `POST /hub/token` | N->Py | `username`, `ttl` | mint a webtiles login token for `token_login` | planned (Phase 1) |
-| `GET /hub/games` | N->Py | | live games list (lobby_entry data) for presence | planned (Phase 1) |
+| `POST /hub/token` | N->Py | `{username}` -> `{username, token}` | mint a webtiles login cookie for the ws `token_login` message; creates the webtiles account on first use with a random password | done |
+| `GET /hub/games` | N->Py | -> same JSON as `/status/lobby/` (name, game_id, char, xl, place, watch_url, ...) | Node polls every 2 s; entities gain `dungeon {char, xl, place}` and accounts record their last character | done |
 | ws `/hub/events` | Py->N | relayed `*hub_*` game messages, plus `game_started`, `game_ended {reason}` | per-game event stream | planned (Phase 1) |
 | ws `/hub/events` | N->Py | `to_game {username, control}` | control message to a game (stash contents, relic answer) | planned (Phase 2a) |
 
-Auth between Node and Py: shared secret from env, loopback bind.
+Auth between Node and Py: header `X-Hub-Secret` must equal webtiles `hub_bridge_secret` (Node env `WEBTILES_SECRET`); handlers refuse non-loopback clients and are not registered unless `hub_enabled = True`. Code: `webtiles/hub/bridge.py`, `crawl-hub/server/bridge/`.
 
 ## 3. Game <-> Py (existing crawl Unix socket; JSON; `*` prefix = server-only)
 

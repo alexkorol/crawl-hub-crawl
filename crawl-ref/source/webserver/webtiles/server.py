@@ -283,6 +283,13 @@ def bind_server(nonsecure_sockets, secure_sockets):
             (r"/status/version/", status.VersionHandler),
             ]
 
+    if config.get('hub_enabled'):  # crawl-hub bridge, see webtiles/hub/
+        from webtiles.hub import bridge
+        handlers += [
+            (r"/hub/token", bridge.HubTokenHandler),
+            (r"/hub/games", bridge.HubGamesHandler),
+        ]
+
     application = tornado.web.Application(handlers,
                                     gzip=config.get('use_gzip'), **settings)
 

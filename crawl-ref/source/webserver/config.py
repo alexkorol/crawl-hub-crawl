@@ -445,3 +445,11 @@ hup_reloads_config = True
 # no_cache = development_mode
 # Automatically log in all users with the username given here.
 autologin = None
+
+# crawl-hub bridge (fork-only). When enabled, the Node hub server on the same
+# machine can mint webtiles login tokens and read the lobby over loopback HTTP
+# at /hub/token and /hub/games, authenticated with the shared secret below.
+# For local development both can come from the environment:
+import os as _os
+hub_enabled = _os.environ.get("HUB_ENABLED") == "1"
+hub_bridge_secret = _os.environ.get("HUB_BRIDGE_SECRET") or None

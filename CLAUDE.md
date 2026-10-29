@@ -27,6 +27,9 @@ Fork-only code lives in `crawl-ref/source/hub/` (C++) and
 - Run webtiles locally: `cd crawl-ref/source && python3 webserver/server.py` then http://localhost:8080
   (`autologin` and `no_cache` live in `webserver/config.py`).
 
+- Hub bridge (fork-only, `webserver/webtiles/hub/`): enable with env `HUB_ENABLED=1 HUB_BRIDGE_SECRET=<s>`;
+  endpoints `/hub/token` and `/hub/games`, loopback only, header `X-Hub-Secret`. Tests: `pytest webtiles/hub`.
+
 ## Architecture pointers (read on demand)
 - `docs/ARCHITECTURE.md` (ours): game loop, webtiles IPC, items, shops, features, hooks.
 - `docs/HUB-PROTOCOL.md` (ours, shared with ../crawl-hub): every hub message.
