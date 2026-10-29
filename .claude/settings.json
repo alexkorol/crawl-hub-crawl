@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./crawl-ref/source/contrib/**)",
+      "Read(./**/*.o)",
+      "Read(./crawl-ref/source/rltiles/**/*.png)",
+      "Read(./crawl-ref/source/catch2-tests/catch_amalgamated.*)",
+      "Read(./.venv/**)",
+      "Edit(./crawl-ref/source/contrib/**)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/post-edit-lint.sh" }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop-build.sh", "timeout": 600 }]
+      }
+    ]
+  }
+}

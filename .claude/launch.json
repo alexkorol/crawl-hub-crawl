@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "webtiles",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd crawl-ref/source && LANG=en_US.UTF-8 ../../.venv/bin/python3 webserver/server.py"],
+      "port": 8080
+    }
+  ]
+}
