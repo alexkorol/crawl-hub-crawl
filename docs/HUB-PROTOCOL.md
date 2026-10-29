@@ -20,7 +20,7 @@ Entity `tile` is a sprite name in the DCSS `player` sheet (e.g. `BASE_HUMAN`); m
 | `login` | B->N | `username`, `password` | sign in; 5 failures per 10 min then `rate_limited` | done |
 | `auth_ok` | N->B | `accountId`, `username`, `token` | success; token lives 30 days | done |
 | `auth_err` | N->B | `reason` | failure, rate-limited, session expired | done |
-| `snapshot` | N->B | `tick`, `map` (MapData: id, legend, rows), `entities[]`, `selfId` | after join; one entity per account, later socket replaces earlier (`error "replaced"`) | done |
+| `snapshot` | N->B | `tick`, `map` (MapData: id, legend, rows), `entities[]`, `selfId`, `zone` (always `town`) | after join; one entity per account, later socket replaces earlier (`error "replaced"`) | done |
 | `delta` | N->B | `tick`, `upsert[]`, `remove[]`, `ackSeq?` | each tick with changes, joined clients only; entities carry `dungeon?` while a classic game runs | done |
 | `move` | B->N | `dir`, `seq` | key press; applied next tick | done |
 | `chat` | B->N | `channel` local/global, `text` | send; 1-300 chars, 5 per 5 s; `/block name`, `/unblock name` | done |
