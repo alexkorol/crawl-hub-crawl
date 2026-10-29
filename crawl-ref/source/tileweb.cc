@@ -1,5 +1,7 @@
 #include "AppHdr.h"
 
+#include <chrono>
+
 #ifdef USE_TILE_WEB
 
 #include "tileweb.h"
@@ -620,6 +622,13 @@ wint_t TilesFramework::_handle_control_message(sockaddr_un addr, string data)
         // (possibly just as a string, like the lua API for this)
         process_command(CMD_GAME_MENU);
     }
+#ifdef HUB
+    else if (msgtype.compare(0, 4, "hub_") == 0)
+    {
+        // crawl-hub reply to a request made through hub_wait_reply().
+        m_hub_reply = data;
+    }
+#endif
     else if (msgtype == "text_input")
     {
         JsonWrapper text = json_find_member(obj.node, "text");
@@ -664,6 +673,45 @@ wint_t TilesFramework::try_await_input()
             return c;
     }
 }
+
+#ifdef HUB
+string TilesFramework::hub_wait_reply(int timeout_ms)
+{
+    m_hub_reply.clear();
+    if (m_sock_name.empty())
+        return "";
+
+    const auto deadline = chrono::steady_clock::now()
+                          + chrono::milliseconds(timeout_ms);
+    while (m_hub_reply.empty())
+    {
+        const auto now = chrono::steady_clock::now();
+        if (now >= deadline)
+            break;
+        const auto left = chrono::duration_cast<chrono::microseconds>(
+                                                            deadline - now);
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(m_sock, &fds);
+        timeval tv;
+        tv.tv_sec = left.count() / 1000000;
+        tv.tv_usec = left.count() % 1000000;
+
+        const int result = select(m_sock + 1, &fds, nullptr, nullptr, &tv);
+        if (result == -1 && errno == EINTR)
+            continue;
+        if (result <= 0)
+            break;
+        const wint_t c = _receive_control_message();
+        // Keys typed while we wait are kept for the next input read.
+        if (c != 0 && c < 128)
+            m_pending_text_input += static_cast<char>(c);
+    }
+    const string reply = m_hub_reply;
+    m_hub_reply.clear();
+    return reply;
+}
+#endif
 
 struct save_signal_mask
 {

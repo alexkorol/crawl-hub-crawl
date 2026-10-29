@@ -51,7 +51,10 @@ Fork-only code lives in `crawl-ref/source/hub/` (C++) and
   `>` works via `feat_stair_direction`, tile = general shop, entry branch in `main.cc` `_can_take_stairs`.
 - Vaults in `dat/des/hub/`; `dat/dlua/loadmaps.lua` skips that directory unless `crawl.hub_enabled()` exists
   (dlua binding in `l-crawl.cc`, HUB only). Lua test: `./crawl -test hub-kiosk`.
-- Python: `*hub_*` messages reach `webtiles/hub/bridge.py` `handle_game_message` (log-and-drop until the relay).
+- Python: `*hub_*` messages reach `webtiles/hub/bridge.py`, which POSTs them to Node (`hub_node_url`) and sends the reply back as a control message.
+- `tiles.hub_wait_reply(ms)` (tileweb.cc, HUB only) blocks for a `hub_*` control message; the kiosk uses it for every request.
+- `JsonWrapper` deletes its node in every destructor: never return or copy one by value; pass by reference or hand over a raw `JsonNode*`.
+- Gate hub socket features on `tiles.has_receivers()`, not `is_controlled_from_web()` (false on some resumed games).
 
 ## Gotchas
 - `./crawl -test` needs a debug build and `builddb` (`make test` does both).

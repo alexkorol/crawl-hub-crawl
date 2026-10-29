@@ -101,6 +101,8 @@ defaults = {
     # crawl-hub bridge (webtiles/hub/): loopback HTTP endpoints for the Node hub
     'hub_enabled': False,
     'hub_bridge_secret': None,
+    'hub_node_url': "http://127.0.0.1:6500",
+    'hub_node_timeout': 3.0,
     'wizard_accounts': False,
     'allow_anon_spectate': True,
     'enable_ttyrecs': True,

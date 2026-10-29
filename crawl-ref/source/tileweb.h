@@ -170,6 +170,12 @@ public:
     bool is_controlled_from_web() { return m_controlled_from_web; }
 
     wint_t try_await_input();
+#ifdef HUB
+    /// crawl-hub: block up to timeout_ms for a control message whose "msg"
+    /// starts with "hub_". Returns its raw JSON, or "" on timeout.
+    string hub_wait_reply(int timeout_ms);
+    string m_hub_reply;
+#endif
     /* Webtiles can receive input both via stdin, and on the
        socket. Also, while waiting for input, it should be
        able to handle other control messages (for example,

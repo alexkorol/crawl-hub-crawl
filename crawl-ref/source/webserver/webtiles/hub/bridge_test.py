@@ -2,6 +2,7 @@ import json
 import os
 import sqlite3
 
+import tornado.gen
 import tornado.testing
 import tornado.web
 
@@ -80,15 +81,71 @@ class HubBridgeTest(tornado.testing.AsyncHTTPTestCase):
         self.assertEqual(json.loads(r.body), [])
 
 
+class FakeNodeHandler(tornado.web.RequestHandler):
+    """Stands in for the Node hub's POST /bridge/game."""
+    calls = []
+
+    def post(self):
+        FakeNodeHandler.calls.append((self.request.headers.get("X-Hub-Secret"),
+                                      json.loads(self.request.body)))
+        ev = json.loads(self.request.body)["event"]
+        if ev["msg"] == "hub_kiosk_open":
+            reply = {"msg": "hub_stash_list", "items": [{"id": 7, "name": "x"}]}
+        elif ev["msg"] == "hub_item_event":
+            reply = None
+        else:
+            reply = {"msg": "hub_stash_deposit_ok", "stashItemId": 1}
+        self.write(json.dumps({"reply": reply}))
+
+
+class FakeProcess(object):
+    username = "alice"
+
+    def __init__(self):
+        self.sent = []
+        self.conn = self
+
+    def send_message(self, data):
+        self.sent.append(json.loads(data))
+
+
 class HandleGameMessageTest(HubBridgeTest):
-    def test_logs_and_drops_deposit(self):
-        class P(object):
-            username = "alice"
-        with self.assertLogs("hub", level="INFO") as cm:
-            bridge.handle_game_message(P(), {
-                "msg": "hub_stash_deposit", "name": "a potion of curing",
-                "quantity": 2, "isRandart": False, "place": "D:1",
-                "blob": "AAAA", "tagMajor": 34, "tagMinor": 1})
-            bridge.handle_game_message(P(), {"msg": "hub_item_event"})
-        self.assertTrue(any("hub deposit from alice" in m for m in cm.output))
-        self.assertTrue(any("hub_item_event" in m for m in cm.output))
+    def get_app(self):
+        # The test app doubles as the fake Node hub.
+        return tornado.web.Application([
+            (r"/hub/token", bridge.HubTokenHandler),
+            (r"/hub/games", bridge.HubGamesHandler),
+            (r"/bridge/game", FakeNodeHandler),
+        ])
+
+    def setUp(self):
+        super(HandleGameMessageTest, self).setUp()
+        FakeNodeHandler.calls = []
+        config.server_config["hub_node_url"] = self.get_url("")
+
+    @tornado.testing.gen_test
+    async def test_relays_and_answers(self):
+        p = FakeProcess()
+        bridge.handle_game_message(p, {"msg": "hub_kiosk_open", "xl": 1})
+        bridge.handle_game_message(p, {"msg": "hub_item_event"})
+        await tornado.gen.sleep(0.3)
+        self.assertEqual(len(FakeNodeHandler.calls), 2)
+        secret, body = FakeNodeHandler.calls[0]
+        self.assertEqual(secret, "s3cret")
+        self.assertEqual(body["username"], "alice")
+        self.assertEqual(body["event"]["msg"], "hub_kiosk_open")
+        self.assertEqual(p.sent, [{"msg": "hub_stash_list",
+                                   "items": [{"id": 7, "name": "x"}]}])
+
+    @tornado.testing.gen_test
+    async def test_unreachable_hub_fails_requests_that_expect_replies(self):
+        config.server_config["hub_node_url"] = "http://127.0.0.1:1"
+        config.server_config["hub_node_timeout"] = 0.5
+        p = FakeProcess()
+        bridge.handle_game_message(p, {"msg": "hub_stash_withdraw_req",
+                                       "stashItemId": 5})
+        bridge.handle_game_message(p, {"msg": "hub_item_event"})
+        await tornado.gen.sleep(1.0)
+        self.assertEqual(p.sent, [{"msg": "hub_stash_withdraw_fail",
+                                   "reason": "the hub is unreachable",
+                                   "stashItemId": 5}])

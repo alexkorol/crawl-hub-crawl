@@ -29,7 +29,7 @@ Entity `tile` is a sprite name in the DCSS `player` sheet (e.g. `BASE_HUMAN`); m
 | `play` | B->N | `gameId` | Enter on the dungeon stairs; refused unless the entity stands on a `dungeon` door | done |
 | `watch` | B->N | `username` | profile "Watch their game" | done |
 | `crawl_open` | N->B | `mode` play/watch, `url` (`/crawl/#play-<gameId>` or `/crawl/#watch-<user>`), `token` | client stores the token as the `login` cookie and loads the URL in the embedded panel | done |
-| `stash_list` / `stash` | B<->N | items with blob metadata (never the blob itself) | town kiosk UI | planned (Phase 2a) |
+| `stash_list` / `stash` | B<->N | - / `items[]` {id, name, quantity, isRandart, depositedAt, depositedPlace} (never the blob) | town stash view | done (server); UI pending |
 | `offer_create` / `offer_accept` / `offer_cancel` / `offer_update` | B<->N | `offerId`, `itemId`, `toAccountId`, state | trade escrow | planned (Phase 2a) |
 | `rumors` | N->B | relic name, props summary, branch, age | tavern board | planned (Phase 2b) |
 | `ping` / `pong` | B<->N | `now` / `now`, `serverNow` | RTT | done |
@@ -45,8 +45,8 @@ Node also reverse-proxies webtiles under its own origin (`server/bridge/proxy.ts
 |---|---|---|---|---|
 | `POST /hub/token` | N->Py | `{username}` -> `{username, token}` | mint a webtiles login cookie for the ws `token_login` message; creates the webtiles account on first use with a random password | done |
 | `GET /hub/games` | N->Py | -> same JSON as `/status/lobby/` (name, game_id, char, xl, place, watch_url, ...) | Node polls every 2 s; entities gain `dungeon {char, xl, place}` and accounts record their last character | done |
-| ws `/hub/events` | Py->N | relayed `*hub_*` game messages, plus `game_started`, `game_ended {reason}` | per-game event stream | planned (Phase 1) |
-| ws `/hub/events` | N->Py | `to_game {username, control}` | control message to a game (stash contents, relic answer) | planned (Phase 2a) |
+| `POST /bridge/game` | Py->N | `{username, event}` -> `{reply}` | every `*hub_*` game message is relayed by `webtiles/hub/bridge.py` `_relay`; Node answers with the control message to send back, or null | done |
+| (reply) | N->Py->Game | the `reply` object is sent to the game as a control message; on a failed POST the Python side synthesizes `*_fail {reason: "the hub is unreachable"}` for requests that expect an answer | done |
 
 Auth between Node and Py: header `X-Hub-Secret` must equal webtiles `hub_bridge_secret` (Node env `WEBTILES_SECRET`); handlers refuse non-loopback clients and are not registered unless `hub_enabled = True`. Code: `webtiles/hub/bridge.py`, `crawl-hub/server/bridge/`.
 
@@ -56,9 +56,10 @@ New server-only messages emitted by the game (all behind `HUB=y`):
 
 | `msg` | Fields | When | Status |
 |---|---|---|---|
-| `*hub_kiosk_open` | `charName`, `xl`, `place` | player interacts with a kiosk feature; Py asks Node for stash list | planned (2a) |
-| `*hub_stash_deposit` | `blob` (base64 marshallItem), `tagMajor`, `tagMinor`, `name`, `basetype`, `subtype`, `quantity`, `isRandart`, `props?` (ARTP index -> value), `place`, `xl` | item removed from inventory at a kiosk (`hub/hub-stash.cc`); Py logs and drops until the relay (2a-2) | game side done |
-| `*hub_stash_withdraw_req` | `stashItemId` | player picks a stash item in the kiosk menu | planned (2a) |
+| `*hub_kiosk_open` | `charName`, `xl`, `place`, `tagMajor`, `tagMinor` | `>` on a kiosk; the game blocks up to 2.5 s (`tiles.hub_wait_reply`) for `hub_stash_list` | done |
+| `*hub_stash_deposit` | `blob` (base64 marshallItem), `tagMajor`, `tagMinor`, `name`, `basetype`, `subtype`, `quantity`, `isRandart`, `props?` (ARTP index -> value), `place`, `xl` | sent from the kiosk deposit menu; the item is removed only after `hub_stash_deposit_ok` | done |
+| `*hub_stash_withdraw_req` | `stashItemId`, `charName` | player picks a stash item; Node marks it withdrawn atomically and answers `_ok`/`_fail` | done |
+| `*hub_stash_withdraw_undo` | `stashItemId`, `reason` | game could not insert the item (pack full); Node restores it | done |
 | `*hub_relic_lost` | one per randart: `blob`, `tag*`, `name`, `props`, `branch`, `depth`, `cause` | player death finalized | planned (2b) |
 | `*hub_relic_query` | `branch`, `depth` | level generation in hub mode; game waits <= 200 ms | planned (2b) |
 | `*hub_relic_placed` | `relicId`, `branch`, `depth` | relic placed by generator | planned (2b) |
@@ -69,8 +70,10 @@ Control messages Py sends to the game (handled in `tileweb.cc` `_handle_control_
 
 | `msg` | Fields | Purpose | Status |
 |---|---|---|---|
-| `hub_stash_list` | `items[]` {id, name, tagMajor, tagMinor} | fill the kiosk ShopMenu | planned (2a) |
-| `hub_stash_withdraw` | `stashItemId`, `blob`, `tag*` | game unmarshals and inserts; replies `*hub_stash_withdraw_ok` or `_fail {reason}` | planned (2a) |
+| `hub_stash_list` | `items[]` {id, name, quantity, blob, tagMajor, tagMinor} | the game decodes blobs locally (skipping other tag versions) and shows them in a pickup-style menu | done |
+| `hub_stash_withdraw_ok` / `hub_stash_withdraw_fail` | `stashItemId` / + `reason` | answer to the request; on ok the game inserts its decoded copy with `move_item_to_inv` | done |
+| `hub_stash_deposit_ok` / `hub_stash_deposit_fail` | `stashItemId` / `reason` | the game removes the item only after `_ok` | done |
+| `hub_stash_fail` | `reason` | generic failure (e.g. no hub account for this webtiles user) | done |
 | `hub_relic_answer` | `relicId?`, `blob?`, `tag*` | generator places it or no-op | planned (2b) |
 | `hub_spawn` | monster spec | bughouse (Phase 3) | planned (3) |
 

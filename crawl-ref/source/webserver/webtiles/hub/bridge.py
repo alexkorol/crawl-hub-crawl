@@ -2,6 +2,8 @@ import hmac
 import logging
 import secrets
 
+import tornado.httpclient
+import tornado.ioloop
 import tornado.web
 from tornado.escape import json_decode, json_encode
 
@@ -65,20 +67,51 @@ class HubGamesHandler(HubHandlerMixin, status.LobbyHandler):
     """GET -> the public lobby JSON (same shape as /status/lobby/)."""
 
 
+REPLY_EXPECTED = {
+    "hub_kiosk_open": "hub_stash_list",
+    "hub_stash_deposit": "hub_stash_deposit_fail",
+    "hub_stash_withdraw_req": "hub_stash_withdraw_fail",
+}
+
+
+def _node_url():
+    return config.get('hub_node_url') or "http://127.0.0.1:6500"
+
+
 def handle_game_message(process, msgobj):
     """Server-only ``*hub_*`` messages from a crawl process.
 
-    Slice 2a-1: log and drop. Slice 2a-2 forwards them to the Node hub and
-    answers withdrawals. ``process`` is the CrawlProcessHandlerBase that
-    received the message; ``process.username`` names the player.
+    Relayed to the Node hub as ``POST /bridge/game`` with the shared secret;
+    the hub's reply (if any) is sent back to the game as a control message.
+    When the hub is unreachable, requests that expect an answer get a
+    ``*_fail`` message so the game never waits on a dead link.
+    ``process`` is the CrawlProcessHandlerBase that received the message.
     """
+    tornado.ioloop.IOLoop.current().spawn_callback(_relay, process, msgobj)
+
+
+async def _relay(process, msgobj):
     log = logging.getLogger("hub")
     kind = msgobj.get("msg")
-    if kind == "hub_stash_deposit":
-        log.info("hub deposit from %s: %s x%s (%s) at %s, blob %d chars",
-                 process.username, msgobj.get("name"), msgobj.get("quantity"),
-                 "randart" if msgobj.get("isRandart") else "plain",
-                 msgobj.get("place"), len(msgobj.get("blob", "")))
-    else:
-        log.info("hub message %s from %s (not handled yet)", kind,
-                 process.username)
+    username = process.username
+    body = json_encode({"username": username, "event": msgobj})
+    reply = None
+    try:
+        client = tornado.httpclient.AsyncHTTPClient()
+        resp = await client.fetch(
+            _node_url() + "/bridge/game", method="POST", body=body,
+            headers={"X-Hub-Secret": config.get('hub_bridge_secret') or "",
+                     "Content-Type": "application/json"},
+            request_timeout=config.get('hub_node_timeout') or 3.0)
+        reply = json_decode(resp.body).get("reply")
+        log.info("hub relay %s from %s -> %s", kind, username,
+                 reply.get("msg") if reply else "no reply")
+    except Exception as e:  # noqa: BLE001 - any failure means "hub down"
+        log.warning("hub relay %s from %s failed: %s", kind, username, e)
+        fail = REPLY_EXPECTED.get(kind)
+        if fail:
+            reply = {"msg": fail, "reason": "the hub is unreachable"}
+            if kind == "hub_stash_withdraw_req":
+                reply["stashItemId"] = msgobj.get("stashItemId")
+    if reply and process.conn:
+        process.conn.send_message(json_encode(reply))

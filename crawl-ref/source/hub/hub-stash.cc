@@ -1,6 +1,7 @@
 /**
  * @file
- * @brief crawl-hub stash kiosk: deposit items to the hub as serialized blobs.
+ * @brief crawl-hub stash kiosk: deposit to and withdraw from the hub stash
+ *        as serialized item blobs, over the webtiles socket.
 **/
 
 #include "AppHdr.h"
@@ -17,6 +18,7 @@
 #include "json.h"
 #include "json-wrapper.h"
 #include "libutil.h"
+#include "macro.h"
 #include "message.h"
 #include "output.h"
 #include "place.h"
@@ -107,11 +109,16 @@ string hub_base64_encode(const vector<unsigned char> &data)
 
 static int _b64_value(char c)
 {
-    if (c >= 'A' && c <= 'Z') return c - 'A';
-    if (c >= 'a' && c <= 'z') return c - 'a' + 26;
-    if (c >= '0' && c <= '9') return c - '0' + 52;
-    if (c == '+') return 62;
-    if (c == '/') return 63;
+    if (c >= 'A' && c <= 'Z')
+        return c - 'A';
+    if (c >= 'a' && c <= 'z')
+        return c - 'a' + 26;
+    if (c >= '0' && c <= '9')
+        return c - '0' + 52;
+    if (c == '+')
+        return 62;
+    if (c == '/')
+        return 63;
     return -1;
 }
 
@@ -147,20 +154,68 @@ bool hub_base64_decode(const string &text, vector<unsigned char> &out)
 }
 
 #ifdef USE_TILE_WEB
-static void _send_deposit(const item_def &item)
+
+static const int HUB_REPLY_TIMEOUT_MS = 2500;
+
+/// Send a server-only message and wait for the hub's reply. Returns a parsed
+/// object the caller must own in a JsonWrapper, or nullptr on timeout / bad
+/// JSON. (JsonWrapper deletes its node in every destructor, so it is never
+/// returned by value.)
+static JsonNode *_hub_request(const JsonWrapper &req)
 {
-    JsonWrapper j(json_mkobject());
-    json_append_member(j.node, "msg", json_mkstring("hub_stash_deposit"));
-    json_append_member(j.node, "blob",
-                       json_mkstring(hub_base64_encode(hub_item_to_blob(item))));
+    tiles.write_message("*");
+    tiles.write_message("%s", req.to_string().c_str());
+    tiles.finish_message();
+    const string text = tiles.hub_wait_reply(HUB_REPLY_TIMEOUT_MS);
+    if (text.empty())
+        return nullptr;
+    JsonNode *reply = json_decode(text.c_str());
+    if (reply && reply->tag != JSON_OBJECT)
+    {
+        json_delete(reply);
+        return nullptr;
+    }
+    return reply;
+}
+
+static string _json_string(const JsonNode *obj, const char *key)
+{
+    const JsonNode *n = json_find_member(obj, key);
+    return n && n->tag == JSON_STRING ? n->string_ : "";
+}
+
+static double _json_number(const JsonNode *obj, const char *key, double def)
+{
+    const JsonNode *n = json_find_member(obj, key);
+    return n && n->tag == JSON_NUMBER ? n->number_ : def;
+}
+
+/// Fill `j` (which must own a fresh json_mkobject()) with the common fields.
+static void _new_request(JsonWrapper &j, const char *msg)
+{
+    json_append_member(j.node, "msg", json_mkstring(msg));
+    json_append_member(j.node, "charName", json_mkstring(you.your_name));
+    json_append_member(j.node, "xl", json_mknumber(you.experience_level));
+    json_append_member(j.node, "place",
+                       json_mkstring(level_id::current().describe()));
     json_append_member(j.node, "tagMajor", json_mknumber(TAG_MAJOR_VERSION));
     json_append_member(j.node, "tagMinor", json_mknumber(TAG_MINOR_VERSION));
+}
+
+static bool _deposit_one(const item_def &item)
+{
+    JsonWrapper j(json_mkobject());
+    _new_request(j, "hub_stash_deposit");
+    json_append_member(j.node, "blob",
+                       json_mkstring(hub_base64_encode(hub_item_to_blob(item))));
     json_append_member(j.node, "name", json_mkstring(item.name(DESC_PLAIN)));
     json_append_member(j.node, "basetype", json_mknumber(item.base_type));
     json_append_member(j.node, "subtype", json_mknumber(item.sub_type));
     json_append_member(j.node, "quantity", json_mknumber(item.quantity));
     json_append_member(j.node, "isRandart",
                        json_mkbool(is_random_artefact(item)));
+    json_append_member(j.node, "isUnrand",
+                       json_mkbool(is_unrandom_artefact(item)));
     if (is_random_artefact(item))
     {
         JsonNode *props = json_mkobject();
@@ -174,28 +229,24 @@ static void _send_deposit(const item_def &item)
             }
         json_append_member(j.node, "props", props);
     }
-    json_append_member(j.node, "place",
-                       json_mkstring(level_id::current().describe()));
-    json_append_member(j.node, "xl", json_mknumber(you.experience_level));
-    tiles.write_message("*");
-    tiles.write_message("%s", j.to_string().c_str());
-    tiles.finish_message();
-}
-#endif
-
-void hub_kiosk()
-{
-#ifndef USE_TILE_WEB
-    mpr("The kiosk's bell rings, but nobody answers. (The hub is only "
-        "reachable through webtiles.)");
-#else
-    if (!tiles.is_controlled_from_web())
+    JsonWrapper reply(_hub_request(j));
+    if (!reply.node)
     {
-        mpr("The kiosk's bell rings, but nobody answers. (The hub is only "
-            "reachable through webtiles.)");
-        return;
+        mpr("The clerk fumbles and hands it back: the hub did not answer.");
+        return false;
     }
+    if (_json_string(reply.node, "msg") != "hub_stash_deposit_ok")
+    {
+        const string reason = _json_string(reply.node, "reason");
+        mprf("The clerk won't take %s%s%s.", item.name(DESC_THE).c_str(),
+             reason.empty() ? "" : ": ", reason.c_str());
+        return false;
+    }
+    return true;
+}
 
+static void _deposit_flow()
+{
     vector<const item_def*> items;
     for (const item_def &it : you.inv)
         if (it.defined())
@@ -233,9 +284,156 @@ void hub_kiosk()
                  copy.name(DESC_THE).c_str(), why.c_str());
             continue;
         }
-        _send_deposit(copy);
+        if (!_deposit_one(copy))
+            continue;
         mprf("You deposit %s.", copy.name(DESC_THE).c_str());
         dec_inv_item_quantity(slot, copy.quantity);
     }
+}
+
+struct hub_stash_entry
+{
+    int id;
+    item_def item;
+};
+
+static vector<hub_stash_entry> _parse_stash_list(const JsonNode *reply,
+                                                 int &incompatible)
+{
+    vector<hub_stash_entry> entries;
+    incompatible = 0;
+    const JsonNode *items = json_find_member(reply, "items");
+    if (!items || items->tag != JSON_ARRAY)
+        return entries;
+    JsonNode *n;
+    json_foreach(n, items)
+    {
+        if (n->tag != JSON_OBJECT)
+            continue;
+        const int major = (int)_json_number(n, "tagMajor", -1);
+        const int minor = (int)_json_number(n, "tagMinor", -1);
+        vector<unsigned char> blob;
+        hub_stash_entry e;
+        e.id = (int)_json_number(n, "id", -1);
+        if (major != TAG_MAJOR_VERSION || minor > TAG_MINOR_VERSION
+            || !hub_base64_decode(_json_string(n, "blob"), blob)
+            || !hub_blob_to_item(blob, minor, e.item))
+        {
+            incompatible++;
+            continue;
+        }
+        e.item.link = NON_ITEM;
+        e.item.pos.reset();
+        entries.push_back(e);
+    }
+    return entries;
+}
+
+static void _withdraw_flow(vector<hub_stash_entry> &entries, int incompatible)
+{
+    if (entries.empty())
+    {
+        if (incompatible)
+        {
+            mprf("Your stash holds %d item%s this version of the game can't "
+                 "read.", incompatible, incompatible == 1 ? "" : "s");
+        }
+        else
+            mpr("Your stash is empty.");
+        return;
+    }
+    vector<const item_def*> items;
+    for (const hub_stash_entry &e : entries)
+        items.push_back(&e.item);
+    vector<SelItem> selected = select_items(items, "Withdraw what?", false,
+                                            menu_type::pickup);
+    redraw_screen();
+    update_screen();
+    if (selected.empty())
+    {
+        canned_msg(MSG_OK);
+        return;
+    }
+    for (const SelItem &sel : selected)
+    {
+        const hub_stash_entry *entry = nullptr;
+        for (const hub_stash_entry &e : entries)
+            if (&e.item == sel.item)
+                entry = &e;
+        if (!entry)
+            continue;
+
+        JsonWrapper j(json_mkobject());
+        _new_request(j, "hub_stash_withdraw_req");
+        json_append_member(j.node, "stashItemId", json_mknumber(entry->id));
+        JsonWrapper reply(_hub_request(j));
+        const string msg = reply.node ? _json_string(reply.node, "msg") : "";
+        if (msg != "hub_stash_withdraw_ok")
+        {
+            const string reason = reply.node ? _json_string(reply.node, "reason")
+                                             : "the hub did not answer";
+            mprf("The clerk can't hand over %s: %s.",
+                 entry->item.name(DESC_THE).c_str(), reason.c_str());
+            continue;
+        }
+        item_def copy = entry->item;
+        if (!move_item_to_inv(copy))
+        {
+            // The hub already marked it withdrawn: put it back.
+            JsonWrapper undo(json_mkobject());
+            _new_request(undo, "hub_stash_withdraw_undo");
+            json_append_member(undo.node, "stashItemId",
+                               json_mknumber(entry->id));
+            json_append_member(undo.node, "reason",
+                               json_mkstring("no room in pack"));
+            tiles.write_message("*");
+            tiles.write_message("%s", undo.to_string().c_str());
+            tiles.finish_message();
+            mprf("You have no room for %s; the clerk keeps it.",
+                 entry->item.name(DESC_THE).c_str());
+        }
+    }
+}
+#endif
+
+void hub_kiosk()
+{
+#ifndef USE_TILE_WEB
+    mpr("The kiosk's bell rings, but nobody answers. (The hub is only "
+        "reachable through webtiles.)");
+#else
+    // The webtiles server must be attached: it relays our socket messages.
+    if (!tiles.has_receivers())
+    {
+        mpr("The kiosk's bell rings, but nobody answers. (The hub is only "
+            "reachable through webtiles.)");
+        return;
+    }
+
+    JsonWrapper open(json_mkobject());
+    _new_request(open, "hub_kiosk_open");
+    JsonWrapper reply(_hub_request(open));
+    if (!reply.node || _json_string(reply.node, "msg") != "hub_stash_list")
+    {
+        const string reason = reply.node ? _json_string(reply.node, "reason")
+                                         : "";
+        mprf("The clerk is away%s%s.", reason.empty() ? "" : ": ",
+             reason.c_str());
+        return;
+    }
+    int incompatible = 0;
+    vector<hub_stash_entry> entries = _parse_stash_list(reply.node,
+                                                        incompatible);
+
+    mprf(MSGCH_PROMPT, "Stash kiosk: (d)eposit, (w)ithdraw [%d item%s], "
+         "or Esc.", (int)entries.size(), entries.size() == 1 ? "" : "s");
+    const int key = getchm();
+    clear_messages();
+    if (key == 'd' || key == 'D')
+        _deposit_flow();
+    else if (key == 'w' || key == 'W')
+        _withdraw_flow(entries, incompatible);
+    else
+        canned_msg(MSG_OK);
 #endif
 }
