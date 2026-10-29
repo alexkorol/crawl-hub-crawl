@@ -129,12 +129,19 @@ class HandleGameMessageTest(HubBridgeTest):
         p = FakeProcess()
         bridge.handle_game_message(p, {"msg": "hub_kiosk_open", "xl": 1})
         bridge.handle_game_message(p, {"msg": "hub_item_event"})
-        await tornado.gen.sleep(0.3)
+        # Both relays run concurrently, so wait for them and look the kiosk
+        # call up by message instead of by arrival order.
+        for _ in range(50):
+            if len(FakeNodeHandler.calls) == 2 and p.sent:
+                break
+            await tornado.gen.sleep(0.05)
         self.assertEqual(len(FakeNodeHandler.calls), 2)
-        secret, body = FakeNodeHandler.calls[0]
+        kiosk = [c for c in FakeNodeHandler.calls
+                 if c[1]["event"]["msg"] == "hub_kiosk_open"]
+        self.assertEqual(len(kiosk), 1)
+        secret, body = kiosk[0]
         self.assertEqual(secret, "s3cret")
         self.assertEqual(body["username"], "alice")
-        self.assertEqual(body["event"]["msg"], "hub_kiosk_open")
         self.assertEqual(p.sent, [{"msg": "hub_stash_list",
                                    "items": [{"id": 7, "name": "x"}]}])
 

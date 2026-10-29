@@ -33,6 +33,8 @@ templates:
   - id: default # id must be unique for each template and game
     crawl_binary: ./crawl
     rcfile_path: ./rcs/
+    # crawl-hub: debug builds default to wizard mode; play games are not wizard games.
+    pre_options: ["-extra-opt-last", "wiz_mode=no"]
     macro_path: ./rcs/
     morgue_path: ./rcs/%n
     socket_path: ./rcs

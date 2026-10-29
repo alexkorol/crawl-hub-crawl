@@ -65,6 +65,7 @@ Fork-only code lives in `crawl-ref/source/hub/` (C++) and
 - `-headless -no-save -seed N` gives deterministic reproductions.
 - macOS has no `timeout` command; use `gtimeout` (coreutils) or run long jobs in the background.
 - Local webtiles creates `webserver/passwd.db3`, `rcs/`, `saves/` on first run; they are untracked scratch state.
+- Debug builds default `wiz_mode` to yes; `games.d/base.yaml` passes `-extra-opt-last wiz_mode=no` so webtiles games are real games. Saves made before that change stay wizard games.
 - Upstream Makefile bug fixed in this fork: `status-icon-sizes` rule path (commit 575e3b2b05).
 
 ## Compaction
