@@ -29,8 +29,9 @@ Entity `tile` is a sprite name in the DCSS `player` sheet (e.g. `BASE_HUMAN`); m
 | `play` | B->N | `gameId` | Enter on the dungeon stairs; refused unless the entity stands on a `dungeon` door | done |
 | `watch` | B->N | `username` | profile "Watch their game" | done |
 | `crawl_open` | N->B | `mode` play/watch, `url` (`/crawl/#play-<gameId>` or `/crawl/#watch-<user>`), `token` | client stores the token as the `login` cookie and loads the URL in the embedded panel | done |
-| `stash_list` / `stash` | B<->N | - / `items[]` {id, name, quantity, isRandart, depositedAt, depositedPlace} (never the blob) | town stash view | done (server); UI pending |
-| `offer_create` / `offer_accept` / `offer_cancel` / `offer_update` | B<->N | `offerId`, `itemId`, `toAccountId`, state | trade escrow | planned (Phase 2a) |
+| `stash_list` / `stash` | B<->N | - / `items[]` {id, name, quantity, isRandart, depositedAt, depositedPlace} (never the blob) | town stash view | done |
+| `offer_create` {stashItemId, toUsername, note?} / `offer_accept` / `offer_decline` / `offer_cancel` {offerId} / `offers_list` | B->N | | gifts of stash items; an offered item is held in escrow (not listable, not withdrawable) until resolved; no binding or fees | done |
+| `offers` | N->B | `incoming[]`, `outgoing[]` (OfferView) | pushed to both parties on every change and on request; `system` notices accompany it | done |
 | `rumors` | N->B | relic name, props summary, branch, age | tavern board | planned (Phase 2b) |
 | `ping` / `pong` | B<->N | `now` / `now`, `serverNow` | RTT | done |
 | `block` | B->N | `username`, `on` | same as `/block` command | done |
