@@ -78,3 +78,17 @@ class HubBridgeTest(tornado.testing.AsyncHTTPTestCase):
         r = self.fetch("/hub/games", headers={"X-Hub-Secret": "s3cret"})
         self.assertEqual(r.code, 200)
         self.assertEqual(json.loads(r.body), [])
+
+
+class HandleGameMessageTest(HubBridgeTest):
+    def test_logs_and_drops_deposit(self):
+        class P(object):
+            username = "alice"
+        with self.assertLogs("hub", level="INFO") as cm:
+            bridge.handle_game_message(P(), {
+                "msg": "hub_stash_deposit", "name": "a potion of curing",
+                "quantity": 2, "isRandart": False, "place": "D:1",
+                "blob": "AAAA", "tagMajor": 34, "tagMinor": 1})
+            bridge.handle_game_message(P(), {"msg": "hub_item_event"})
+        self.assertTrue(any("hub deposit from alice" in m for m in cm.output))
+        self.assertTrue(any("hub_item_event" in m for m in cm.output))

@@ -248,6 +248,12 @@ to it.
 ########################################################################
 ### Features
 ########################################################################
+A stash kiosk
+
+A small counter staffed by a bored clerk of the crawl-hub. Items left here are
+carried up to your account's stash in the town above, where you can trade them
+or send them down with a later character. Press > while standing on it.
+%%%%
 A shop
 
 A shop in the dungeon, beyond sight of the world above, manned by a secretive

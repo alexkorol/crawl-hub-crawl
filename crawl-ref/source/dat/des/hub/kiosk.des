@@ -1,0 +1,28 @@
+##############################################################################
+# kiosk.des: crawl-hub stash kiosks (fork-only; loaded only in HUB=y builds,
+# see dat/dlua/loadmaps.lua).
+#
+# A kiosk is a walkable feature. Standing on it and pressing > opens the
+# deposit menu, which sends items to the player's hub stash.
+##############################################################################
+
+# One guaranteed kiosk on the first floor, near wherever the player arrives.
+NAME:   hub_kiosk_d1
+TAGS:   extra transparent no_pool_fixup
+PLACE:  D:1
+KFEAT:  K = hub_kiosk
+MAP
+...
+.K.
+...
+ENDMAP
+
+# Occasional kiosks deeper down: about one floor in four.
+NAME:   hub_kiosk_mini
+TAGS:   allow_dup transparent
+DEPTH:  D:2-, Lair, Orc, Elf, Snake, Swamp, Shoals, Spider, Vaults, Depths
+CHANCE: 2500
+KFEAT:  K = hub_kiosk
+MAP
+K
+ENDMAP

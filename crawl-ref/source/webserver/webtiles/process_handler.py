@@ -1196,6 +1196,10 @@ class CrawlProcessHandler(CrawlProcessHandlerBase):
                 # message
                 self.receiving_direct_milestones = True # no need for .where files
                 self.set_where_info(msgobj)
+            elif msgobj["msg"].startswith("hub_") and config.get('hub_enabled'):
+                # crawl-hub bridge (fork-only): stash, relic and item events.
+                from webtiles.hub import bridge
+                bridge.handle_game_message(self, msgobj)
             else:
                 self.logger.warning("Unknown message from the crawl process: %s",
                                     msgobj["msg"])

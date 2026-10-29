@@ -393,6 +393,15 @@ TRAP(DNGN_TRAP_WEB, "web", "trap_web", LIGHTGREY),
     FFT_NONE, MF_FLOOR,
 },
 
+#ifdef HUB
+{
+    DNGN_HUB_KIOSK, "stash kiosk", "hub_kiosk",
+    DCHAR_ARCH, NUM_DCHAR_TYPES,
+    CYAN, LIGHTGREY, CYAN, CYAN, LIGHTGREY,
+    FFT_NOTABLE, MF_FEATURE,
+},
+#endif
+
 {
     DNGN_STONE_ARCH, "empty arch of ancient stone", "stone_arch",
     DCHAR_ARCH, NUM_DCHAR_TYPES,

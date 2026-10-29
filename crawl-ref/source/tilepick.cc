@@ -318,6 +318,10 @@ tileidx_t tileidx_feature_base(dungeon_feature_type feat)
         return TILE_DNGN_TRANSPORTER_LANDING;
     case DNGN_ENTER_SHOP:
         return TILE_SHOP_GENERAL;
+#ifdef HUB
+    case DNGN_HUB_KIOSK:
+        return TILE_SHOP_GENERAL; // crawl-hub: no dedicated art yet
+#endif
     case DNGN_ABANDONED_SHOP:
         return TILE_DNGN_ABANDONED_SHOP;
     case DNGN_ENTER_GAUNTLET:

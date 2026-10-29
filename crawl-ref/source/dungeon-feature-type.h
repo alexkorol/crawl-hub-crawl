@@ -398,6 +398,9 @@ enum dungeon_feature_type
     DNGN_FRIGID_WALL,
     DNGN_ZOT_STATUE,
     DNGN_TRAP_DISPERSAL_INACTIVE,
+#ifdef HUB
+    DNGN_HUB_KIOSK, // crawl-hub stash kiosk (fork-only)
+#endif
 #endif
 
     NUM_FEATURES

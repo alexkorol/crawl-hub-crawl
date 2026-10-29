@@ -16,11 +16,11 @@ Fork-only code lives in `crawl-ref/source/hub/` (C++) and
 - GNU make 3.81 (Apple). WEBTILES=y and TILES=y are mutually exclusive.
 
 ## Commands (run from `crawl-ref/source` after the PATH export above)
-- Build debug+webtiles: `make -j8 debug WEBTILES=y`
+- Build debug+webtiles with hub features: `make -j8 debug WEBTILES=y HUB=y` (plain `make -j8 debug WEBTILES=y` must keep building: it is upstream)
 - Rebuild and show only problems: `make -j8 debug WEBTILES=y 2>&1 | grep -E 'error|warning' | head -50`
 - Regenerate `compile_commands.json` (clangd): `bear --output ../../compile_commands.json -- make -j8 debug WEBTILES=y`
 - Lua functional tests (debug build, needs `LANG=en_US.UTF-8`): `./crawl -test` ; one test: `./crawl -test <substring>`
-- Unit tests: `make catch2-tests` ; stress suite (slow): `make test`
+- Unit tests: `make catch2-tests HUB=y` (hub tests are `#ifdef HUB`) ; stress suite (slow): `make test`
 - Lint C++: `util/checkwhite -n <files>` and `util/unbrace -n <files>` (`-n` = dry run, reports only)
 - Headless repro: `./crawl -headless -seed 1 -no-save -wizard -name t -rc test/stress/woken_rest.rc`
 - Webserver tests: `cd webserver && pytest` ; lint: `flake8 webtiles`
@@ -43,6 +43,15 @@ Fork-only code lives in `crawl-ref/source/hub/` (C++) and
 - Verify crawl symbols with clangd or grep before use; Lua bindings live in `l-*.cc`.
 - Commits: 72-char subject, body says why. Generic fixes go upstream as separate commits.
 - Never edit `contrib/`, generated `*.o`, `rltiles/` output or `webserver/game_data/static/tileinfo-*.js`.
+
+## Hub game-side pieces (Phase 2a)
+- `hub/hub-stash.{h,cc}`: kiosk menu, `hub_item_is_stashable`, `hub_item_to_blob`/`hub_blob_to_item`
+  (marshallItem, tag versions travel beside the blob), base64. Spec: `../crawl-hub/docs/SPEC-stash-v0.md`.
+- `DNGN_HUB_KIOSK` (last entry of the 34 region in `dungeon-feature-type.h`), data in `feature-data.h`,
+  `>` works via `feat_stair_direction`, tile = general shop, entry branch in `main.cc` `_can_take_stairs`.
+- Vaults in `dat/des/hub/`; `dat/dlua/loadmaps.lua` skips that directory unless `crawl.hub_enabled()` exists
+  (dlua binding in `l-crawl.cc`, HUB only). Lua test: `./crawl -test hub-kiosk`.
+- Python: `*hub_*` messages reach `webtiles/hub/bridge.py` `handle_game_message` (log-and-drop until the relay).
 
 ## Gotchas
 - `./crawl -test` needs a debug build and `builddb` (`make test` does both).

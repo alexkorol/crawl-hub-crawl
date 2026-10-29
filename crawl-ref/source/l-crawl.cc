@@ -1669,6 +1669,18 @@ LUAFN(_crawl_redraw_stats)
  * @treturn int
  * @function millis
  */
+#ifdef HUB
+/*** Is this a crawl-hub build? (fork-only)
+ * @treturn boolean
+ * @function hub_enabled
+ */
+LUAFN(_crawl_hub_enabled)
+{
+    lua_pushboolean(ls, true);
+    return 1;
+}
+#endif
+
 LUAFN(_crawl_millis)
 {
 #ifdef TARGET_OS_WINDOWS
@@ -1873,6 +1885,9 @@ static const struct luaL_Reg crawl_dlib[] =
 { "redraw_stats", _crawl_redraw_stats },
 { "god_speaks", _crawl_god_speaks },
 { "millis", _crawl_millis },
+#ifdef HUB
+{ "hub_enabled", _crawl_hub_enabled },
+#endif
 { "make_name", crawl_make_name },
 { "set_max_runes", _crawl_set_max_runes },
 { "tutorial_skill",  crawl_tutorial_skill },

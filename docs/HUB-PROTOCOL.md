@@ -57,7 +57,7 @@ New server-only messages emitted by the game (all behind `HUB=y`):
 | `msg` | Fields | When | Status |
 |---|---|---|---|
 | `*hub_kiosk_open` | `charName`, `xl`, `place` | player interacts with a kiosk feature; Py asks Node for stash list | planned (2a) |
-| `*hub_stash_deposit` | `blob` (base64 marshallItem), `tagMajor`, `tagMinor`, `itemName`, `basetype`, `subtype`, `isRandart`, `props?` | item removed from inventory at a kiosk | planned (2a) |
+| `*hub_stash_deposit` | `blob` (base64 marshallItem), `tagMajor`, `tagMinor`, `name`, `basetype`, `subtype`, `quantity`, `isRandart`, `props?` (ARTP index -> value), `place`, `xl` | item removed from inventory at a kiosk (`hub/hub-stash.cc`); Py logs and drops until the relay (2a-2) | game side done |
 | `*hub_stash_withdraw_req` | `stashItemId` | player picks a stash item in the kiosk menu | planned (2a) |
 | `*hub_relic_lost` | one per randart: `blob`, `tag*`, `name`, `props`, `branch`, `depth`, `cause` | player death finalized | planned (2b) |
 | `*hub_relic_query` | `branch`, `depth` | level generation in hub mode; game waits <= 200 ms | planned (2b) |

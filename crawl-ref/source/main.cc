@@ -74,6 +74,9 @@
 #include "god-passive.h"
 #include "god-prayer.h"
 #include "hints.h"
+#ifdef HUB
+#include "hub-stash.h"
+#endif
 #include "hiscores.h"
 #include "initfile.h"
 #include "invent.h"
@@ -1348,18 +1351,27 @@ static bool _can_take_stairs(dungeon_feature_type ftype, bool down,
                              bool known_shaft)
 {
     // Up and down both work for shops, portals, and altars.
-    if (ftype == DNGN_ENTER_SHOP || feat_is_altar(ftype))
+#ifdef HUB
+    const bool kiosk = ftype == DNGN_HUB_KIOSK;
+#else
+    const bool kiosk = false;
+#endif
+    if (ftype == DNGN_ENTER_SHOP || kiosk || feat_is_altar(ftype))
     {
         if (crawl_state.doing_prev_cmd_again)
         {
             mprf("You can't repeat %s actions.",
-                ftype == DNGN_ENTER_SHOP ? "shop" : "altar");
+                ftype == DNGN_ENTER_SHOP ? "shop" : kiosk ? "kiosk" : "altar");
             crawl_state.cancel_cmd_all();
         }
         else if (you.berserk())
             canned_msg(MSG_TOO_BERSERK);
         else if (ftype == DNGN_ENTER_SHOP) // don't convert to capitalism
             shop();
+#ifdef HUB
+        else if (kiosk)
+            hub_kiosk();
+#endif
         else
             try_god_conversion(feat_altar_god(ftype));
         // Even though we may have "succeeded", return false so we don't keep

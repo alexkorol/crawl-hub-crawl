@@ -728,6 +728,16 @@ DEFINES_L += -DUSE_TILE
 DEFINES_L += -DUSE_TILE_WEB
 endif
 
+# crawl-hub fork: stash kiosk, hub messages. Independent of WEBTILES, but the
+# kiosk only talks to the hub when the game is controlled from webtiles.
+ifdef HUB
+DEFINES_L += -DHUB
+INCLUDES_L += -Ihub
+HUB_OBJECTS = hub/hub-stash.o
+OBJECTS += $(HUB_OBJECTS)
+TEST_OBJECTS += catch2-tests/test_hub_stash.o
+endif
+
 #
 # Tiles build stuff
 #

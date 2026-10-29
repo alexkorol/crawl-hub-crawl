@@ -63,3 +63,22 @@ class HubTokenHandler(HubHandlerMixin, tornado.web.RequestHandler):
 
 class HubGamesHandler(HubHandlerMixin, status.LobbyHandler):
     """GET -> the public lobby JSON (same shape as /status/lobby/)."""
+
+
+def handle_game_message(process, msgobj):
+    """Server-only ``*hub_*`` messages from a crawl process.
+
+    Slice 2a-1: log and drop. Slice 2a-2 forwards them to the Node hub and
+    answers withdrawals. ``process`` is the CrawlProcessHandlerBase that
+    received the message; ``process.username`` names the player.
+    """
+    log = logging.getLogger("hub")
+    kind = msgobj.get("msg")
+    if kind == "hub_stash_deposit":
+        log.info("hub deposit from %s: %s x%s (%s) at %s, blob %d chars",
+                 process.username, msgobj.get("name"), msgobj.get("quantity"),
+                 "randart" if msgobj.get("isRandart") else "plain",
+                 msgobj.get("place"), len(msgobj.get("blob", "")))
+    else:
+        log.info("hub message %s from %s (not handled yet)", kind,
+                 process.username)
