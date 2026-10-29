@@ -11,6 +11,13 @@
 #include "artefact.h"
 #include "art-enum.h"
 #include "branch.h"
+#include "coord.h"
+#include "coordit.h"
+#include "dungeon.h"
+#include "env.h"
+#include "mon-place.h"
+#include "random.h"
+#include "terrain.h"
 #include "invent.h"
 #include "item-name.h"
 #include "item-prop.h"
@@ -436,4 +443,35 @@ void hub_kiosk()
     else
         canned_msg(MSG_OK);
 #endif
+}
+
+void hub_place_fixed_kiosk()
+{
+    const bool fixed_stop = player_in_branch(BRANCH_TEMPLE)
+                            || player_in_branch(BRANCH_VESTIBULE)
+                            || (player_in_branch(BRANCH_VAULTS)
+                                && you.depth == 1);
+    if (!fixed_stop)
+        return;
+    for (rectangle_iterator ri(1); ri; ++ri)
+        if (env.grid(*ri) == DNGN_HUB_KIOSK)
+            return; // already there (level regenerated with one)
+
+    // Prefer plain floor away from vault-marked cells; fall back to any floor.
+    for (int pass = 0; pass < 2; ++pass)
+    {
+        for (int tries = 0; tries < 2000; ++tries)
+        {
+            const coord_def p = random_in_bounds();
+            if (env.grid(p) != DNGN_FLOOR || monster_at(p)
+                || env.igrid(p) != NON_ITEM)
+            {
+                continue;
+            }
+            if (pass == 0 && map_masked(p, MMT_VAULT))
+                continue;
+            env.grid(p) = DNGN_HUB_KIOSK;
+            return;
+        }
+    }
 }

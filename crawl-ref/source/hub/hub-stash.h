@@ -16,6 +16,10 @@ struct item_def;
 /// Open the kiosk menu for the player standing on a DNGN_HUB_KIOSK.
 void hub_kiosk();
 
+/// After level generation: put a kiosk on a free floor cell of the fixed
+/// stops (Temple, Vaults:1, Hell Vestibule). No-op elsewhere.
+void hub_place_fixed_kiosk();
+
 /// Hard exclusions (runes, the Orb, unrandarts). `why` gets a short reason.
 bool hub_item_is_stashable(const item_def &item, std::string *why = nullptr);
 

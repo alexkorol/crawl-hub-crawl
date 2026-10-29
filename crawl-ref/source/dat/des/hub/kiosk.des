@@ -26,3 +26,7 @@ KFEAT:  K = hub_kiosk
 MAP
 K
 ENDMAP
+
+# Fixed kiosks at the Temple, Vaults:1 and the Hell Vestibule are placed from
+# C++ (hub_place_fixed_kiosk in hub/hub-stash.cc) after level generation,
+# because those levels are encompass vaults where minivaults cannot land.

@@ -6,6 +6,9 @@
 #include "AppHdr.h"
 
 #include "dungeon.h"
+#ifdef HUB
+#include "hub-stash.h"
+#endif
 
 #include <algorithm>
 #include <cmath>
@@ -2798,6 +2801,9 @@ static void _build_dungeon_level()
 
     fixup_misplaced_items();
     link_items();
+#ifdef HUB
+    hub_place_fixed_kiosk(); // crawl-hub: Temple, Vaults:1, Vestibule
+#endif
 
     if (!player_in_branch(BRANCH_COCYTUS)
         && !player_in_branch(BRANCH_SWAMP)

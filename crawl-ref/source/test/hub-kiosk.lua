@@ -29,3 +29,12 @@ for i = 1, 20 do
   end
 end
 test.map_assert(found, "No hub_kiosk placed on D:5 in 20 generations")
+
+-- Fixed kiosks at the thematic stops.
+for _, place in ipairs({ "Temple", "Vaults:1", "Hell" }) do
+  debug.goto_place(place)
+  crawl.delay(0)
+  test.regenerate_level()
+  test.map_assert(test.find_feature("hub_kiosk"),
+                  "No hub_kiosk placed in " .. place)
+end
