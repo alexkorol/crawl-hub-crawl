@@ -19,7 +19,7 @@ Fork-only code lives in `crawl-ref/source/hub/` (C++) and
 - Build debug+webtiles: `make -j8 debug WEBTILES=y`
 - Rebuild and show only problems: `make -j8 debug WEBTILES=y 2>&1 | grep -E 'error|warning' | head -50`
 - Regenerate `compile_commands.json` (clangd): `bear --output ../../compile_commands.json -- make -j8 debug WEBTILES=y`
-- Lua functional tests (debug build): `./crawl -test` ; one test: `./crawl -test <substring>`
+- Lua functional tests (debug build, needs `LANG=en_US.UTF-8`): `./crawl -test` ; one test: `./crawl -test <substring>`
 - Unit tests: `make catch2-tests` ; stress suite (slow): `make test`
 - Lint C++: `util/checkwhite -n <files>` and `util/unbrace -n <files>` (`-n` = dry run, reports only)
 - Headless repro: `./crawl -headless -seed 1 -no-save -wizard -name t -rc test/stress/woken_rest.rc`
