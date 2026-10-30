@@ -41,6 +41,7 @@ Entity `tile` is a sprite name in the DCSS `player` sheet (e.g. `BASE_HUMAN`); m
 | `rift_cast` / `rift_memorise` | B->N | `spell` (SPELL_* id) | `z` + letter casts a memorised spell at the nearest target on the player's next action; `M` + letter memorises a library spell if spell levels allow. Rift entities also carry `mp`, `mpMax` | done |
 | `rift_use` | B->N | `item` (POT_* / SCR_* id) | `q` / `r` + letter: drink or read on the next action; the sheet carries `inventory[]` {id, name, kind, quantity}, `effects[]`, `weaponPlus`, `armourPlus`. Item entity tiles may be layered as `"A+B"` (B over A) | done |
 | `rift_remove` | B->N | `item` (RING_* / AMU_* id) | `R` + letter removes worn jewellery into the pack; `P` puts it on through `rift_use`. The sheet carries `worn[]` {id, name} | done |
+| `rift_pray` / `rift_ability` | B->N | - / `ability` (ABIL_* id) | `p` on an altar (legend door kind `altar:GOD_*`) joins that god; `a` + letter invokes a god power on the next action. The sheet carries `god` {id, name, piety, stars, penance} or null and `abilities[]` {id, name, rank, mp, fail, available} | done |
 | `ping` / `pong` | B<->N | `now` / `now`, `serverNow` | RTT | done |
 | `block` | B->N | `username`, `on` | same as `/block` command | done |
 | `system` | N->B | `text` | server notices (rate limit, command results) | done |
