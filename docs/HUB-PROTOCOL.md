@@ -39,6 +39,7 @@ Entity `tile` is a sprite name in the DCSS `player` sheet (e.g. `BASE_HUMAN`); m
 | `zone_changed` / `log` | N->B | `zone`, `map`, `entities[]`, `selfId` / `text`, `kind` combat/info/death | zone switch (town <-> `rift:<depth>`); Rift message log lines for that player | done |
 | `rift_stat` / `rift_char` | B<->N | `stat` str/int/dex / `sheet` RiftCharSheet {species, job, xl, xp, nextXp, hp, hpMax, ac, ev, str, int, dex, statChoices, weapon, armour, attackDelay, skills[] {name, level, training, apt}} | level-up stat choice (`S`/`I`/`D`, +2, applied next tick); `m` character and skill screen; the sheet also carries `mp`, `mpMax`, `spellLevels`, `spells[]` {id, name, level, schools, fail, power, powerCap, memorised, available} | done |
 | `rift_cast` / `rift_memorise` | B->N | `spell` (SPELL_* id) | `z` + letter casts a memorised spell at the nearest target on the player's next action; `M` + letter memorises a library spell if spell levels allow. Rift entities also carry `mp`, `mpMax` | done |
+| `rift_use` | B->N | `item` (POT_* / SCR_* id) | `q` / `r` + letter: drink or read on the next action; the sheet carries `inventory[]` {id, name, kind, quantity}, `effects[]`, `weaponPlus`, `armourPlus`. Item entity tiles may be layered as `"A+B"` (B over A) | done |
 | `ping` / `pong` | B<->N | `now` / `now`, `serverNow` | RTT | done |
 | `block` | B->N | `username`, `on` | same as `/block` command | done |
 | `system` | N->B | `text` | server notices (rate limit, command results) | done |
