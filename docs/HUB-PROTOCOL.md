@@ -35,6 +35,9 @@ Entity `tile` is a sprite name in the DCSS `player` sheet (e.g. `BASE_HUMAN`); m
 | `races_list` / `races` / `race_join` {raceId} | B<->N | - / `races[]` {id, name, seed, endsAt, joined, board[]} | seeded races; chat `/race new <seed> <hours> <name>`, `/race join <id>`; progress from game messages, pushed on change | done |
 | chat channel `clan`, `/clan create|join|leave`, `/bughouse challenge <name>|accept|end` | B->N | | clan rooms (one clan per account, profile shows it) and bughouse matches (one per account, kills rate-limited to one per 8 s) | done |
 | `rumors_list` / `rumors` | B<->N | - / `items[]` {name, powers, branch, depth, lostAt, lostChar, cause, respawnCount} | tavern board (`r`, or Enter on the tavern door); losses are also announced as `system` notices | done |
+| `rift_enter` {species?, job?} / `rift_species` / `rift_stairs` {dir} / `rift_pickup` | B->N | | the Rift (realtime engine, SPEC-engine-v0): enter on the portal, choose species and job at XL 1, stairs, `g` pick up | done |
+| `zone_changed` / `log` | N->B | `zone`, `map`, `entities[]`, `selfId` / `text`, `kind` combat/info/death | zone switch (town <-> `rift:<depth>`); Rift message log lines for that player | done |
+| `rift_stat` / `rift_char` | B<->N | `stat` str/int/dex / `sheet` RiftCharSheet {species, job, xl, xp, nextXp, hp, hpMax, ac, ev, str, int, dex, statChoices, weapon, armour, attackDelay, skills[] {name, level, training, apt}} | level-up stat choice (`S`/`I`/`D`, +2, applied next tick); `m` character and skill screen | done |
 | `ping` / `pong` | B<->N | `now` / `now`, `serverNow` | RTT | done |
 | `block` | B->N | `username`, `on` | same as `/block` command | done |
 | `system` | N->B | `text` | server notices (rate limit, command results) | done |
