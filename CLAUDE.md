@@ -57,6 +57,11 @@ Fork-only code lives in `crawl-ref/source/hub/` (C++) and
 - `hub/hub-relics.{h,cc}`: `hub_json_item` (shared item JSON), `hub_item_event` (call-outs in items.cc, player-equip.cc), `hub_report_death` (ouch.cc), `hub_place_lost_relic` (dungeon.cc). Never consume game RNG in hub code: `hub_free_floor_cell` picks deterministically.
 - `hub_handle_control` (hub-relics.cc) runs unsolicited `hub_*` pushes (e.g. `hub_spawn`) from inside the webtiles control-message dispatch; only act when `crawl_state.waiting_for_command`.
 - Gate hub socket features on `tiles.has_receivers()`, not `is_controlled_from_web()` (false on some resumed games).
+- `hub/hub-shop.{h,cc}`: selling in dungeon shops (`%` in the shop menu closes it, `shop()` runs `hub_shop_sell`, then reopens);
+  price = `hub_shop_item_value` (shopping.cc wrapper of the buy formula, at what the player knows) * `HUB_SELL_FRACTION` 1/3.
+  Returned lost relics carry the item prop `HUB_RELIC_KEY` and are never bought.
+- `hub/hub-bank.{h,cc}`: `DNGN_HUB_TELLER` (after the kiosk, Temple only, beside the kiosk via `hub_place_fixed_teller`).
+  Deposit/withdraw are recorded in `you.props["hub_bank_pending"]` and checkpoint-saved before sending; settled by `opId` at the next visit.
 
 ## Gotchas
 - `./crawl -test` needs a debug build and `builddb` (`make test` does both).

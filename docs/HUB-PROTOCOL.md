@@ -76,6 +76,9 @@ New server-only messages emitted by the game (all behind `HUB=y`):
 | `*hub_relic_placed` / `*hub_relic_place_failed` | `relicId` / + `reason` | relic put on a free floor cell (RNG-free choice) or not; a failure returns it to the lost pool | done |
 | `*hub_item_event` | `kind` pickup/equip/unequip/drop + item fields + `place` | randarts only; feeds `item_events` and moves relics placed -> carried | done |
 | `*hub_game_over` | `cause`, `won`, `quit` + common fields | every game ending (`hub_report_death`); closes race entries and bughouse matches | done |
+| `*hub_bank_open` | common fields | `>` on a temple teller (`DNGN_HUB_TELLER`); game waits for `hub_bank_state` | done |
+| `*hub_bank_deposit` / `*hub_bank_withdraw` | `amount` (1..1e9), `opId` (game-chosen, <= 80 chars, unique per account) + common fields | teller menu. Exactly once per (account, `opId`): the game records the op in `you.props` (deducting gold first for a deposit) and saves before sending, and on a lost answer re-sends the same `opId` at the next teller visit (an unconfirmed deposit is also re-sent, fire-and-forget, when the game ends) | done |
+| `*hub_bank_transfer` | `amount`, `to` (hub username), `opId` | bank to bank; the character's gold is not touched | done |
 | `*hub_monster_killed` | `monster` (type name), `hd` + common fields | player kills (not summons/allies); bughouse routes it to the rival | done |
 | (common fields) | `charName`, `xl`, `place`, `branch`, `depth`, `seed`, `turns` | on every hub message from `hub-relics.cc` `_common_fields`; races track progress from them | done |
 
@@ -88,6 +91,8 @@ Control messages Py sends to the game (handled in `tileweb.cc` `_handle_control_
 | `hub_stash_deposit_ok` / `hub_stash_deposit_fail` | `stashItemId` / `reason` | the game removes the item only after `_ok` | done |
 | `hub_stash_fail` | `reason` | generic failure (e.g. no hub account for this webtiles user) | done |
 | `hub_relic_answer` | `relicId` or null, `blob`, `tagMajor`, `tagMinor` | 15% per eligible level (same branch, depth within 2), one copy at a time: the relic leaves the lost pool when answered | done |
+| `hub_bank_state` | `balance` | answer to `*hub_bank_open` (a failed open is a `hub_bank_fail` without `opId`) | done |
+| `hub_bank_ok` / `hub_bank_fail` | `opId`, `kind`, `amount`, `balance` / `opId`, `reason`, `final` | `final: true` = the hub refused and nothing happened (the game refunds a deposit). A fail without `final` (the bridge's "hub is unreachable", or a timeout) is unknown: the game keeps the op pending and retries it with the same `opId`. A repeated `opId` returns the stored `_ok`. The game ignores replies whose `opId` is not the op it is waiting for (late answers) | done |
 | `hub_spawn` | `monster` (type name), `from` | pushed by Node via Py `POST /hub/control`; the game spawns it hostile near the player when waiting for a command (`hub_handle_control`), else drops it | done |
 
 ## 4. Reports

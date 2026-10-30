@@ -12,7 +12,15 @@
 
 struct item_def;
 class scorefile_entry;
+
+/// Item prop marking a lost relic the hub returned to the dungeon (value: the
+/// hub's relic id). Shops never buy such items.
+#define HUB_RELIC_KEY "hub_relic_id"
 struct JsonNode;
+
+/// Fill `obj` with "msg" and the common fields every hub message carries
+/// (charName, xl, place, branch, depth, seed, turns). Webtiles builds only.
+void hub_common_fields(JsonNode *obj, const char *msg);
 
 /// Fill `obj` with the item fields the hub stores (blob, tag versions, name,
 /// types, quantity, randart flags and properties).

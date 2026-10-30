@@ -46,6 +46,9 @@
 #endif
 #include "travel.h"
 #include "unicode.h"
+#ifdef HUB
+#include "hub-shop.h"
+#endif
 #include "unwind.h"
 
 ShoppingList shopping_list;
@@ -76,6 +79,14 @@ static int _shop_get_item_value(const item_def& item, int greed, bool id)
 
     return max(result, 1);
 }
+
+#ifdef HUB
+// crawl-hub: the shop's own buy-price formula, for selling (hub-shop.cc).
+int hub_shop_item_value(const item_def& item, int greed, bool id)
+{
+    return _shop_get_item_value(item, greed, id);
+}
+#endif
 
 int item_price(const item_def& item, const shop_struct& shop)
 {
@@ -985,6 +996,9 @@ protected:
 
 public:
     bool bought_something = false;
+#ifdef HUB
+    bool hub_sell_requested = false; // crawl-hub: '%' closes to sell
+#endif
 
     ShopMenu(shop_struct& _shop, const level_pos& _pos, bool _can_purchase);
 };
@@ -1196,6 +1210,10 @@ void ShopMenu::update_help()
 
     m = pad_more_with(m, hyphenated_hotkey_letters(item_count(), 'A')
                                   + " put item on shopping list");
+#ifdef HUB
+    if (can_purchase)
+        m += "\n[<w>%</w>] sell your items to this shop";
+#endif
 
 
     const string col = colour_to_str(channel_to_colour(MSGCH_PROMPT));
@@ -1496,6 +1514,13 @@ bool ShopMenu::process_key(int keyin)
         update_help();
         update_menu(true);
         return true;
+#ifdef HUB
+    case '%':
+        if (!can_purchase)
+            break;
+        hub_sell_requested = true;
+        return false; // shop() runs the sell flow, then reopens the menu
+#endif
     default:
         break;
     }
@@ -1556,8 +1581,22 @@ void shop()
     if (culled)
         more(); // make sure all messages appear before menu
 
+#ifdef HUB
+    bool bought_something = false;
+    for (bool again = true; again;)
+    {
+        ShopMenu menu(shop, level_pos::current(), true);
+        menu.show();
+        bought_something |= menu.bought_something;
+        again = menu.hub_sell_requested;
+        if (again)
+            hub_shop_sell(shop);
+    }
+#else
     ShopMenu menu(shop, level_pos::current(), true);
     menu.show();
+    const bool bought_something = menu.bought_something;
+#endif
 
     StashTrack.get_shop(shop.pos) = ShopInfo(shop);
     bool any_on_list = any_of(begin(shop.stock), end(shop.stock),
@@ -1573,7 +1612,7 @@ void shop()
     shopping_list.do_excursion_work();
     redraw_screen();
     update_screen();
-    if (menu.bought_something)
+    if (bought_something)
         mprf("Thank you for shopping at %s!", shopname.c_str());
     if (any_on_list)
         mpr("You can access your shopping list by pressing '$'.");

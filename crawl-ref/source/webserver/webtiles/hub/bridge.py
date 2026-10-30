@@ -97,7 +97,16 @@ REPLY_EXPECTED = {
     "hub_kiosk_open": "hub_stash_list",
     "hub_stash_deposit": "hub_stash_deposit_fail",
     "hub_stash_withdraw_req": "hub_stash_withdraw_fail",
+    "hub_bank_open": "hub_bank_fail",
+    "hub_bank_deposit": "hub_bank_fail",
+    "hub_bank_withdraw": "hub_bank_fail",
+    "hub_bank_transfer": "hub_bank_fail",
 }
+
+# Bank ops whose outcome is unknown when Node can't be reached: the fail
+# carries the request's opId and never sets "final", so the game keeps the
+# op pending and re-sends the same opId later (exactly once on the hub side).
+BANK_OPS = ("hub_bank_deposit", "hub_bank_withdraw", "hub_bank_transfer")
 
 
 def _node_url():
@@ -139,5 +148,7 @@ async def _relay(process, msgobj):
             reply = {"msg": fail, "reason": "the hub is unreachable"}
             if kind == "hub_stash_withdraw_req":
                 reply["stashItemId"] = msgobj.get("stashItemId")
+            if kind in BANK_OPS:
+                reply["opId"] = msgobj.get("opId")
     if reply and process.conn:
         process.conn.send_message(json_encode(reply))

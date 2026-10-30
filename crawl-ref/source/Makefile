@@ -733,9 +733,9 @@ endif
 ifdef HUB
 DEFINES_L += -DHUB
 INCLUDES_L += -Ihub
-HUB_OBJECTS = hub/hub-stash.o hub/hub-relics.o
+HUB_OBJECTS = hub/hub-stash.o hub/hub-relics.o hub/hub-shop.o hub/hub-bank.o
 OBJECTS += $(HUB_OBJECTS)
-TEST_OBJECTS += catch2-tests/test_hub_stash.o
+TEST_OBJECTS += catch2-tests/test_hub_stash.o catch2-tests/test_hub_shop_bank.o
 endif
 
 #

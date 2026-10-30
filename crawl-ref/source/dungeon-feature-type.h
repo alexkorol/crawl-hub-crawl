@@ -400,6 +400,7 @@ enum dungeon_feature_type
     DNGN_TRAP_DISPERSAL_INACTIVE,
 #ifdef HUB
     DNGN_HUB_KIOSK, // crawl-hub stash kiosk (fork-only)
+    DNGN_HUB_TELLER, // crawl-hub temple teller (fork-only)
 #endif
 #endif
 

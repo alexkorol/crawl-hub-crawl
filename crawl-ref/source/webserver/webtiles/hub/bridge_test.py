@@ -93,6 +93,10 @@ class FakeNodeHandler(tornado.web.RequestHandler):
             reply = {"msg": "hub_stash_list", "items": [{"id": 7, "name": "x"}]}
         elif ev["msg"] == "hub_item_event":
             reply = None
+        elif ev["msg"] == "hub_bank_deposit":
+            reply = {"msg": "hub_bank_ok", "opId": ev["opId"],
+                     "kind": "deposit", "amount": ev["amount"],
+                     "balance": 100 + ev["amount"]}
         else:
             reply = {"msg": "hub_stash_deposit_ok", "stashItemId": 1}
         self.write(json.dumps({"reply": reply}))
@@ -157,6 +161,44 @@ class HandleGameMessageTest(HubBridgeTest):
         self.assertEqual(p.sent, [{"msg": "hub_stash_withdraw_fail",
                                    "reason": "the hub is unreachable",
                                    "stashItemId": 5}])
+
+    @tornado.testing.gen_test
+    async def test_unreachable_hub_bank_ops_fail_without_final(self):
+        config.server_config["hub_node_url"] = "http://127.0.0.1:1"
+        config.server_config["hub_node_timeout"] = 0.5
+        p = FakeProcess()
+        for kind in ("hub_bank_deposit", "hub_bank_withdraw",
+                     "hub_bank_transfer"):
+            bridge.handle_game_message(p, {"msg": kind, "amount": 10,
+                                           "opId": "Bob-1-2-" + kind})
+        bridge.handle_game_message(p, {"msg": "hub_bank_open"})
+        await tornado.gen.sleep(1.0)
+        self.assertEqual(len(p.sent), 4)
+        for reply in p.sent:
+            self.assertEqual(reply["msg"], "hub_bank_fail")
+            self.assertEqual(reply["reason"], "the hub is unreachable")
+            self.assertNotIn("final", reply)
+        ops = sorted(r.get("opId") or "" for r in p.sent)
+        self.assertEqual(ops, ["", "Bob-1-2-hub_bank_deposit",
+                               "Bob-1-2-hub_bank_transfer",
+                               "Bob-1-2-hub_bank_withdraw"])
+        opens = [r for r in p.sent if "opId" not in r]
+        self.assertEqual(len(opens), 1)
+
+    @tornado.testing.gen_test
+    async def test_bank_replies_are_relayed(self):
+        p = FakeProcess()
+        bridge.handle_game_message(p, {"msg": "hub_bank_deposit",
+                                       "amount": 25, "opId": "Bob-1-2-3"})
+        for _ in range(50):
+            if p.sent:
+                break
+            await tornado.gen.sleep(0.05)
+        self.assertEqual(p.sent, [{"msg": "hub_bank_ok", "opId": "Bob-1-2-3",
+                                   "kind": "deposit", "amount": 25,
+                                   "balance": 125}])
+        self.assertEqual(FakeNodeHandler.calls[0][1]["event"]["opId"],
+                         "Bob-1-2-3")
 
     def test_control_push_reaches_the_running_game(self):
         from webtiles import process_handler

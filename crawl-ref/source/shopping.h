@@ -39,6 +39,12 @@ string shop_type_name(shop_type type);
 
 bool shoptype_identifies_stock(shop_type type);
 
+#ifdef HUB
+// crawl-hub: a shop's buy price for `item` at `greed` (hub-shop.cc sells
+// for a fraction of it). `id` prices as if fully identified.
+int hub_shop_item_value(const item_def& item, int greed, bool id);
+#endif
+
 bool is_shop_item(const item_def &item);
 bool shop_item_unknown(const item_def &item);
 bool have_voucher();

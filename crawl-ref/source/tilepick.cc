@@ -321,6 +321,8 @@ tileidx_t tileidx_feature_base(dungeon_feature_type feat)
 #ifdef HUB
     case DNGN_HUB_KIOSK:
         return TILE_SHOP_GENERAL; // crawl-hub: no dedicated art yet
+    case DNGN_HUB_TELLER:
+        return TILE_SHOP_GADGETS; // crawl-hub: no dedicated art yet
 #endif
     case DNGN_ABANDONED_SHOP:
         return TILE_DNGN_ABANDONED_SHOP;

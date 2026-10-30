@@ -254,6 +254,13 @@ A small counter staffed by a bored clerk of the crawl-hub. Items left here are
 carried up to your account's stash in the town above, where you can trade them
 or send them down with a later character. Press > while standing on it.
 %%%%
+A temple teller
+
+A brass grille in the temple wall, behind which a patient teller of the
+crawl-hub keeps the ledger of your account's bank. Gold deposited here waits in
+the town above and outlives this character; it can be withdrawn by any of your
+characters at a teller, or sent to another player. Press > while standing on it.
+%%%%
 A shop
 
 A shop in the dungeon, beyond sight of the world above, manned by a secretive

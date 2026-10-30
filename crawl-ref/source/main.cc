@@ -75,6 +75,7 @@
 #include "god-prayer.h"
 #include "hints.h"
 #ifdef HUB
+#include "hub-bank.h"
 #include "hub-stash.h"
 #endif
 #include "hiscores.h"
@@ -1352,7 +1353,7 @@ static bool _can_take_stairs(dungeon_feature_type ftype, bool down,
 {
     // Up and down both work for shops, portals, and altars.
 #ifdef HUB
-    const bool kiosk = ftype == DNGN_HUB_KIOSK;
+    const bool kiosk = ftype == DNGN_HUB_KIOSK || ftype == DNGN_HUB_TELLER;
 #else
     const bool kiosk = false;
 #endif
@@ -1369,6 +1370,8 @@ static bool _can_take_stairs(dungeon_feature_type ftype, bool down,
         else if (ftype == DNGN_ENTER_SHOP) // don't convert to capitalism
             shop();
 #ifdef HUB
+        else if (ftype == DNGN_HUB_TELLER)
+            hub_teller();
         else if (kiosk)
             hub_kiosk();
 #endif

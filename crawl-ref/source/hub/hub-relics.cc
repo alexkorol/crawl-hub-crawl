@@ -14,6 +14,7 @@
 #include "dungeon.h"
 #include "env.h"
 #include "hiscores.h"
+#include "hub-bank.h"
 #include "hub-stash.h"
 #include "item-name.h"
 #include "items.h"
@@ -110,6 +111,11 @@ static void _common_fields(JsonNode *obj, const char *msg)
     json_append_member(obj, "seed", json_mkstring(to_string(crawl_state.seed)));
     json_append_member(obj, "turns", json_mknumber(you.num_turns));
 }
+
+void hub_common_fields(JsonNode *obj, const char *msg)
+{
+    _common_fields(obj, msg);
+}
 #endif
 
 void hub_item_event(const char *kind, const item_def &item)
@@ -145,6 +151,8 @@ void hub_report_death(const scorefile_entry &se)
                                        || dt == KILLED_BY_QUITTING));
         _send(over);
     }
+    // A deposit the teller never confirmed must still land in the bank.
+    hub_bank_flush_pending();
     if (dt == KILLED_BY_LEAVING || dt == KILLED_BY_WINNING
         || dt == KILLED_BY_QUITTING)
     {
@@ -228,6 +236,7 @@ void hub_place_lost_relic()
     }
     item.link = NON_ITEM;
     item.pos.reset();
+    item.props[HUB_RELIC_KEY] = relic_id;
     if (copy_item_to_grid(item, p, item.quantity, true, true) == NON_ITEM)
     {
         fail("level is full of items");

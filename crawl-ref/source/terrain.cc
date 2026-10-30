@@ -365,6 +365,7 @@ command_type feat_stair_direction(dungeon_feature_type feat)
     case DNGN_ENTER_SHOP:
 #ifdef HUB
     case DNGN_HUB_KIOSK:
+    case DNGN_HUB_TELLER:
 #endif
         return CMD_GO_DOWNSTAIRS;
 
@@ -2029,6 +2030,8 @@ const char* feat_type_name(dungeon_feature_type feat)
 #ifdef HUB
     if (feat == DNGN_HUB_KIOSK)
         return "kiosk";
+    if (feat == DNGN_HUB_TELLER)
+        return "teller";
 #endif
     if (feat_is_fountain(feat))
         return "fountain";
