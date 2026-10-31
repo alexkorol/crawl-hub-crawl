@@ -11,7 +11,9 @@
  * first for a deposit) and the game is saved before the request is sent. The
  * hub applies each (account, opId) once and answers a repeat with the stored
  * result, so an op whose answer was lost is re-sent with the same opId at the
- * next teller visit (or, for a deposit, when the game ends).
+ * next teller visit, or when the game ends: a deposit is re-sent, and a
+ * withdrawal is re-sent and, if the hub applied it, paid back into the bank
+ * under hub_bank_refund_op_id() (the dead character never got the gold).
 **/
 
 #pragma once
@@ -27,6 +29,8 @@
 
 static const int HUB_BANK_MAX_AMOUNT = 1000000000;
 static const size_t HUB_BANK_MAX_OP_ID = 80;
+/// Appended to a withdrawal's opId for the deposit that pays it back.
+#define HUB_BANK_REFUND_SUFFIX ":refund"
 
 struct hub_bank_op
 {
@@ -40,10 +44,14 @@ std::string hub_bank_format_op(const hub_bank_op &op);
 /// Inverse of hub_bank_format_op; false on anything malformed.
 bool hub_bank_parse_op(const std::string &text, hub_bank_op &op);
 
-/// "<name>-<birth>-<seed hex>-<seq>", name trimmed so the id fits in
-/// HUB_BANK_MAX_OP_ID characters.
+/// "<name>-<birth>-<seed hex>-<seq>", name trimmed so the id plus
+/// HUB_BANK_REFUND_SUFFIX fits in HUB_BANK_MAX_OP_ID characters.
 std::string hub_bank_make_op_id(const std::string &name, int64_t birth,
                                 uint64_t seed, int seq);
+
+/// The opId of the deposit that pays back withdrawal `op_id`:
+/// op_id + HUB_BANK_REFUND_SUFFIX, its head trimmed if it would not fit.
+std::string hub_bank_refund_op_id(const std::string &op_id);
 
 enum class hub_bank_result
 {
@@ -65,5 +73,7 @@ void hub_teller();
 void hub_place_fixed_teller();
 
 /// At game end: re-send an unconfirmed deposit (fire-and-forget, same opId)
-/// so the gold the character handed over still reaches the bank.
+/// so the gold the character handed over still reaches the bank. Re-send an
+/// unconfirmed withdrawal (same opId) and wait for the answer; if the hub
+/// applied it, deposit the amount back under hub_bank_refund_op_id().
 void hub_bank_flush_pending();

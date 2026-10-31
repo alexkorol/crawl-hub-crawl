@@ -1361,8 +1361,8 @@ static bool _can_take_stairs(dungeon_feature_type ftype, bool down,
     {
         if (crawl_state.doing_prev_cmd_again)
         {
-            mprf("You can't repeat %s actions.",
-                ftype == DNGN_ENTER_SHOP ? "shop" : kiosk ? "kiosk" : "altar");
+            // "shop", "altar", and in HUB builds "kiosk" or "teller".
+            mprf("You can't repeat %s actions.", feat_type_name(ftype));
             crawl_state.cancel_cmd_all();
         }
         else if (you.berserk())

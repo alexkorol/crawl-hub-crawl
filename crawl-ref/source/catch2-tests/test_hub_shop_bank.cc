@@ -15,6 +15,8 @@
 #include "items.h"
 #include "orb-type.h"
 #include "shopping.h"
+#include "stringutil.h"
+#include "terrain.h"
 
 #include "test_player_fixture.h"
 
@@ -138,6 +140,16 @@ TEST_CASE_METHOD(MockPlayerYouTestsFixture, "hub shops refuse some items",
     REQUIRE(hub_shop_refusal(sword, true) == "take it off first");
 }
 
+// main.cc _can_take_stairs: "You can't repeat %s actions." with
+// feat_type_name(); the teller used to be called a kiosk there.
+TEST_CASE("hub repeat refusal names the teller", "[single-file]")
+{
+    REQUIRE(string(feat_type_name(DNGN_HUB_TELLER)) == "teller");
+    REQUIRE(string(feat_type_name(DNGN_HUB_KIOSK)) == "kiosk");
+    REQUIRE(string(feat_type_name(DNGN_ENTER_SHOP)) == "shop");
+    REQUIRE(string(feat_type_name(DNGN_ALTAR_TROG)) == "altar");
+}
+
 TEST_CASE("hub bank pending op round trip", "[single-file]")
 {
     hub_bank_op op;
@@ -183,9 +195,31 @@ TEST_CASE("hub bank op ids are unique and short", "[single-file]")
             != hub_bank_make_op_id("SerBob", 1700000000, 2, 1));
     const string longname = hub_bank_make_op_id(string(200, 'n'), INT64_MAX,
                                                 UINT64_MAX, INT32_MAX);
-    REQUIRE(longname.size() == HUB_BANK_MAX_OP_ID);
+    // Room is left for the refund suffix.
+    REQUIRE(longname.size() + strlen(HUB_BANK_REFUND_SUFFIX)
+            == HUB_BANK_MAX_OP_ID);
     hub_bank_op op;
     REQUIRE(hub_bank_parse_op("deposit 5 " + longname, op));
+}
+
+TEST_CASE("hub bank refund ids derive from the withdrawal", "[single-file]")
+{
+    REQUIRE(hub_bank_refund_op_id("Bob-1-2-3") == "Bob-1-2-3:refund");
+    // Every generated id gets its suffix untrimmed, so the hub can tie the
+    // refund to the withdrawal.
+    const string longname = hub_bank_make_op_id(string(200, 'n'), INT64_MAX,
+                                                UINT64_MAX, INT32_MAX);
+    const string refund = hub_bank_refund_op_id(longname);
+    REQUIRE(refund == longname + HUB_BANK_REFUND_SUFFIX);
+    REQUIRE(refund.size() == HUB_BANK_MAX_OP_ID);
+    // An old full-length id still yields a valid, distinct, stable id.
+    const string old_id = string(63, 'a') + "-1-2-3456789";
+    REQUIRE(old_id.size() > HUB_BANK_MAX_OP_ID - 7);
+    const string old_refund = hub_bank_refund_op_id(old_id);
+    REQUIRE(old_refund.size() == HUB_BANK_MAX_OP_ID);
+    REQUIRE(old_refund != old_id);
+    REQUIRE(old_refund == hub_bank_refund_op_id(old_id));
+    REQUIRE(ends_with(old_refund, "-3456789" HUB_BANK_REFUND_SUFFIX));
 }
 
 TEST_CASE("hub bank replies settle only their own op", "[single-file]")

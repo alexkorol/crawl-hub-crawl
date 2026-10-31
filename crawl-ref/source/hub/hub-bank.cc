@@ -69,9 +69,19 @@ string hub_bank_make_op_id(const string &name, int64_t birth, uint64_t seed,
         clean = "char";
     const string tail = make_stringf("-%lld-%llx-%d", (long long)birth,
                                      (unsigned long long)seed, seq);
-    if (clean.size() + tail.size() > HUB_BANK_MAX_OP_ID)
-        clean.resize(HUB_BANK_MAX_OP_ID - tail.size());
+    const size_t room = HUB_BANK_MAX_OP_ID - strlen(HUB_BANK_REFUND_SUFFIX);
+    if (clean.size() + tail.size() > room)
+        clean.resize(room - tail.size());
     return clean + tail;
+}
+
+string hub_bank_refund_op_id(const string &op_id)
+{
+    const string id = op_id + HUB_BANK_REFUND_SUFFIX;
+    // Ids from older builds may use the whole limit; the tail is the unique
+    // part, so drop the head.
+    return id.size() > HUB_BANK_MAX_OP_ID
+           ? id.substr(id.size() - HUB_BANK_MAX_OP_ID) : id;
 }
 
 hub_bank_result hub_bank_classify(const string &msg, const string &reply_op_id,
@@ -463,15 +473,37 @@ void hub_bank_flush_pending()
     if (!tiles.has_receivers() || !you.props.exists(HUB_BANK_PENDING_KEY))
         return;
     hub_bank_op op;
-    if (!hub_bank_parse_op(you.props[HUB_BANK_PENDING_KEY].get_string(), op)
-        || op.kind != "deposit")
+    if (!hub_bank_parse_op(you.props[HUB_BANK_PENDING_KEY].get_string(), op))
+        return;
+    if (op.kind == "deposit")
     {
+        JsonWrapper j(json_mkobject());
+        hub_common_fields(j.node, "hub_bank_deposit");
+        json_append_member(j.node, "amount", json_mknumber(op.amount));
+        json_append_member(j.node, "opId", json_mkstring(op.op_id));
+        _send(j);
         return;
     }
-    JsonWrapper j(json_mkobject());
-    hub_common_fields(j.node, "hub_bank_deposit");
-    json_append_member(j.node, "amount", json_mknumber(op.amount));
-    json_append_member(j.node, "opId", json_mkstring(op.op_id));
-    _send(j);
+
+    // A withdrawal the hub may have applied: the gold left the bank but the
+    // character never got it. Ask again (a repeat opId returns the stored
+    // result, and a first arrival applies it now); if it happened, pay it
+    // back. Both ids are idempotent on the hub.
+    int balance = -1;
+    string reason;
+    const hub_bank_result r = _send_op("hub_bank_withdraw", op.op_id,
+                                       op.amount, "", balance, reason);
+    if (r != hub_bank_result::ok)
+    {
+        dprf("hub teller: pending withdraw %s at game end: %s",
+             op.op_id.c_str(), r == hub_bank_result::refused ? "refused"
+                                                             : reason.c_str());
+        return;
+    }
+    const string refund = hub_bank_refund_op_id(op.op_id);
+    const hub_bank_result rr = _send_op("hub_bank_deposit", refund, op.amount,
+                                        "", balance, reason);
+    dprf("hub teller: refund %s of %d gold: %s", refund.c_str(), op.amount,
+         rr == hub_bank_result::ok ? "ok" : reason.c_str());
 #endif
 }
