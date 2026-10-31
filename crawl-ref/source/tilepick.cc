@@ -319,10 +319,11 @@ tileidx_t tileidx_feature_base(dungeon_feature_type feat)
     case DNGN_ENTER_SHOP:
         return TILE_SHOP_GENERAL;
 #ifdef HUB
+    // crawl-hub: existing DCSS tiles, distinct from real shops; the hub town and the Rift use the same.
     case DNGN_HUB_KIOSK:
-        return TILE_SHOP_GENERAL; // crawl-hub: no dedicated art yet
+        return TILE_DNGN_TRANSPORTER; // items leave the game for the hub stash
     case DNGN_HUB_TELLER:
-        return TILE_SHOP_GADGETS; // crawl-hub: no dedicated art yet
+        return TILE_DNGN_GOLDEN_STATUE;
 #endif
     case DNGN_ABANDONED_SHOP:
         return TILE_DNGN_ABANDONED_SHOP;
